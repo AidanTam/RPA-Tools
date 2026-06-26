@@ -257,7 +257,7 @@ class unicond(object):
                 self.panel_numblocks = panel_numblocks
 
     def process(self, variogram=None):
-        pass
+        raise NotImplementedError("unicond.process is not yet implemented")
 
 
 
@@ -611,96 +611,10 @@ def _discretize_cdf(z, y, zmin, zmax, lttype, ltpar, uttype, utpar, discretizati
     elif uttype == 3:
         utzz = _powint(utyy, y[-1], 1.0, z[-1], zmax, utpar)
     elif uttype == 4:
-        utzz = _powint(utyy, y[-1], 1.0, z[-1], zmax, utpar)
+        utzz = _hyperint(utyy, y[-1], 1.0, z[-1], zmax, utpar)
 
     zz[yy < y[0]] = ltzz
     zz[yy >= y[-1]] = utzz
-
-    return zz;
-
-def _beyond(z, y, zmin, zmax, lttype, ltpar, uttype, utpar, discretization=100):
-
-    """
-    Discretization of z values along a cdf
-    This method is not longer used as the _discretize_cdf method using broadcasting is much faster
-    Similar to the approach used by the gslib beyond.f90 subroutine
-
-    Notes:
-    ------
-
-    The upper and lower tails allow for extrapolation using models other than linear extrapolation
-    Discretization between the input z values uses straight line linear interpolation.
-    Use the hyperbolic model with caution as it does not require upper extrapolation limit
-
-    Parameters
-    ----------
-
-    z: numpy array
-    Usually cut-off grades
-    y: numpy array
-    Probabilities corresponding to the z-values
-    zmin: float
-    lower extrapolation limit
-    zmax: float
-    upper extrapolation limit
-    lttype: integer
-    Lower tail type; 1 = Linear, 3 = Power, 4 = Hyperbolic (*note that hyperbolic is not appropriate for lower tail)
-    ltpar: float
-    Lower tail parameter; To be used with the power model. <1 is positively skewed, 1 is straight line, >1 negatively
-    skewed
-    uttype: integer
-    Upper tail type; 1 = Linear, 3 = Power, 4 = Hyperbolic
-    utpar: float
-    Upper tail parameter; For the power and hyperbolic models. Power parameter as per lower tail parameter. For the
-    hyperbolic model, the paramter lies on interval (0,1).
-    discretization: integer
-    Number of discretization points/interpolated z-values along the cdf. Default = 100 but 1000 points advised,
-    minimal additional computation time.
-
-    Returns
-    -------
-
-    zz: numpy array
-    Interpolated points with mean(z) and var(z) = mean(zz) and var(zz)
-
-    """
-
-    yy = _gen_cdf(discretization)
-    zz = np.zeros(discretization)
-
-    for i, x in enumerate(yy):
-        # Are we in the lower tail
-        if x < y[0]:
-            tailtype = lttype
-            tail_par = ltpar
-            xmin = 0.
-            xmax = y[0]
-            ymin = zmin
-            ymax = z[0]
-        # Are we in the upper tail
-        elif x > y[-1]:
-            tailtype = uttype
-            tail_par = utpar
-            xmin = y[-1]
-            xmax = 1.0
-            ymin = z[-1]
-            ymax = zmax
-        # we must be in middle
-        else:
-            idx = _locate(x, y)
-            tailtype = 1
-            tail_par = utpar
-            xmin = y[idx]
-            xmax = y[idx + 1]
-            ymin = z[idx]
-            ymax = z[idx + 1]
-
-        if tailtype == 1:
-            zz[i] = _linearint(x, xmin, xmax, ymin, ymax)
-        if tailtype == 3:
-            zz[i] = _powint(x, xmin, xmax, ymin, ymax, tail_par)
-        if tailtype == 4:
-            zz[i] = _hyperint(x, xmin, xmax, ymin, ymax, tail_par)
 
     return zz;
 
@@ -726,8 +640,10 @@ def _order_relations_correction(y):
     # probabilities must fall within bounds (0,1)
     y[-1] = np.max([y[-1], 0])
     y[0] = np.min([y[0], 1])
-    upward = y
-    downward = y
+    # upward and downward must be independent copies so the two corrective
+    # sweeps do not interfere before they are averaged together
+    upward = y.copy()
+    downward = y.copy()
 
     for i in range(len(y)):
         # upward

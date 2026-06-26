@@ -1,6 +1,12 @@
 import pandas as pd
 import numpy as np
 
+
+def get_split_string(string, lookup):
+
+    return string.split(lookup, 1)
+
+
 class read_bef(object):
 
     def __init__(self, filename=None):
@@ -23,8 +29,6 @@ class read_bef(object):
         start_idx = []
         end_idx = []
 
-        self.df = pd.DataFrame()
-
         for i in range(len(start)):
 
             if start[i] == True:
@@ -34,15 +38,12 @@ class read_bef(object):
 
         loop_range = np.array(end_idx) - np.array(start_idx)
 
+        frames = []
         for i in range(len(start_idx)):
 
             dftemp = pd.DataFrame(index=[0])
 
             for j in range(loop_range[i]):
-
-                def get_split_string(string, lookup):
-
-                    return string.split(lookup,1)
 
                 if j == 0:
                     split_string = get_split_string(file_list[start_idx[i] + j], 'BEGIN$DEF ')
@@ -51,7 +52,9 @@ class read_bef(object):
                     split_string = get_split_string(file_list[start_idx[i] + j], '=')
                     dftemp[split_string[0]] = split_string[1]
 
-            self.df = self.df.append(dftemp)
+            frames.append(dftemp)
+
+        self.df = pd.concat(frames) if frames else pd.DataFrame()
 
     def list_parameter_IDs(self):
 
@@ -65,13 +68,13 @@ class read_bef(object):
 
     def filter_df_Par_ID(self, parameter_ids=None):
 
-        filtered_df = self.df
+        filtered_df = self.df.copy()
 
         filtered_df['ISIN'] = filtered_df['Par_ID'].isin(parameter_ids)
 
         filtered_df = filtered_df[filtered_df['ISIN'] == True]
 
-        filtered_df = filtered_df.drop(['ISIN'],1)
+        filtered_df = filtered_df.drop(columns=['ISIN'])
 
         return filtered_df.dropna(axis=1);
 

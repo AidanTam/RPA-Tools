@@ -13,7 +13,7 @@ from scipy.optimize import brentq
 import scipy.stats as st
 from math import exp
 
-path = "C:\\ProgramData\\Anaconda3\\Lib\\site-packages\\pyrpa\\"
+path = os.path.dirname(os.path.abspath(__file__)) + os.sep
 cwd = os.getcwd()
 
 def stnormpdf(x):
@@ -177,10 +177,12 @@ class supportcorrection(object):
 
         n, m = H.shape[0], H.shape[1]
 
+        # standard normal pdf at each gaussian-transformed value (independent of p)
+        for i in range(1, m):
+            g[i] = stnormpdf(y[i])
+
         for p in range(1, n):
-            for i in range(1, m):
-                g[i] = stnormpdf(y[i])
-                PCI[p] = PCI[p] + (z[i - 1] - z[i]) * 1 / np.sqrt(p) * H[p - 1, i] * g[i]
+            PCI[p] = np.sum((z[:m - 1] - z[1:m]) * H[p - 1, 1:m] * g[1:m]) / np.sqrt(p)
 
         def f_var_Zv(r, PCI, Var_Zv):
 
@@ -276,8 +278,8 @@ def gammabar(block_size,
     with open("gammabar.out") as f:
         content = f.readlines()
 
-    avg_var = np.str.split(content[-4].replace('/n', ' '), "=")[-1]
-    # avg_var = float(np.str.split(content[-4].strip("/n"), "=")[-1])
+    avg_var = content[-4].replace('/n', ' ').split("=")[-1]
+    # avg_var = float(content[-4].strip("/n").split("=")[-1])
 
     os.chdir(cwd)
 

@@ -21,7 +21,6 @@ io.df_to_datamine(df)
 import pandas as pd
 import struct
 import numpy as np
-import os
 
 
 def read_datamine(dmfile):
@@ -44,11 +43,11 @@ def read_datamine(dmfile):
 
     maxlength = len(temp_column_names)
 
-    # write the page data to a temporary binary file
+    # accumulate the page data in memory
 
-    tf = open('tempbin2374@@$8349hdw32nn3.bin', 'wb')
     offset = 4096
     page = 1
+    buffers = []
 
     while True:
         dmfile_obj.seek(offset)
@@ -59,20 +58,16 @@ def read_datamine(dmfile):
         buf = dmfile_obj.read(buf_length)
         if not buf:
             break
-        tf.write(buf)
+        buffers.append(buf)
         offset += 4096
         page += 1
 
     dmfile_obj.close()
-    tf.close()
 
-    # read the binary data back in as structured binary using np.fromfile
+    # interpret the accumulated binary data as a structured array
 
-    bin_dat = open('tempbin2374@@$8349hdw32nn3.bin', 'rb')
-    dd = np.fromfile(bin_dat, dtype=datatypes)
+    dd = np.frombuffer(b"".join(buffers), dtype=datatypes)
     df = pd.DataFrame(dd.tolist(), columns=temp_column_names)
-    bin_dat.close()
-    os.remove('tempbin2374@@$8349hdw32nn3.bin')
 
     # concatenate alphanumeric fields
 
@@ -84,7 +79,7 @@ def read_datamine(dmfile):
             else:
                 df[fn] += df[fn + wn].str.decode('ascii').str.rstrip()
 
-            df = df.drop([fn + wn], 1)
+            df = df.drop(columns=[fn + wn])
 
     # add the implicit fields to the dataframe
 
@@ -217,7 +212,6 @@ def df_to_datamine(df, outname):
                     bin_out.seek(8 - len(bytes_out), 1)
                 else:
                     bin_out.write(struct.pack('d', float(np_dat[i, j])))
-                cnt + 1
         if cnt == nlrp - 1:
             page += 1
             cnt = 0
@@ -294,15 +288,6 @@ def _get_default(dat, i):
         default = dat[i * 56 + 48:i * 56 + 56].decode('ascii')
     return default;
 
-def _bit_tostring(bitval):
-    # bitval = bitarray.bitarray.tobytes(bitval)
-    bitval = np.bi
-
-    print(bitval.dtype)
-    return bitval;
-    # return bitarray.bitarray.tostring(bitval);
-    # return bitarray.bitarray.unpack(bitval);
-
 def _get_dm_field_desc(open_file, numfields):
 
     fld_arr = []
@@ -326,7 +311,7 @@ def _get_dm_field_desc(open_file, numfields):
 
     for i in range(numfields):
         for j in range(5):
-            fld_arr[i, j] = np.str.rstrip(fld_arr[i, j])
+            fld_arr[i, j] = fld_arr[i, j].rstrip()
 
     return fld_arr;
 
@@ -354,29 +339,8 @@ def get_dm_field_desc(dmfile):
 
     open_file = open(dmfile, "rb")
     numfields, numpages, lastrecord = _get_dm_file_desc(open_file=open_file)
-
-    fld_arr = []
-
-    # field descriptions start at byte 224 and end at 224 + 3839
-    open_file.seek(224)
-    flddesc = open_file.read(3839)
-
-    # loop through the fields
-
-    for i in range(numfields):
-        fld_arr.append([flddesc[i * 56:i * 56 + 4].decode('ascii') + flddesc[i * 56 + 8:i * 56 + 8 + 4].decode('ascii'),
-                        flddesc[i * 56 + 16:i * 56 + 20],
-                        int(struct.unpack('d', flddesc[i * 56 + 24:i * 56 + 32])[0]),
-                        int(struct.unpack('d', flddesc[i * 56 + 32:i * 56 + 40])[0]),
-                        _get_default(flddesc, i)])
-
-    # strip the whitespace
-
-    fld_arr = np.array(fld_arr)
-
-    for i in range(numfields):
-        for j in range(5):
-            fld_arr[i, j] = np.str.rstrip(fld_arr[i, j])
+    fld_arr = _get_dm_field_desc(open_file=open_file, numfields=numfields)
+    open_file.close()
 
     return fld_arr;
 

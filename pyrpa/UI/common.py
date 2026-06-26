@@ -14,8 +14,7 @@ def show_header():
 
 def extend_list(list1, list2):
 
-    for item in list2:
-        list1.append(item)
+    list1.extend(list2)
 
     return list1;
 
@@ -63,7 +62,7 @@ def load_file(infile):
     elif ".csv" in infile:
         df = pd.read_csv(infile)
     else:
-        raise "Invalid file type"
+        raise ValueError("Invalid file type")
     return df;
 
 def get_header(df):
@@ -149,24 +148,6 @@ def guess_field(header, type=None):
         fields = None
 
     return fields;
-
-def guess_bhid(header):
-
-    def test_case(option):
-        if option in header:
-            return option, 1;
-        else:
-            return None, 0;
-
-    options  = ['BHID', 'HOLEID', 'holeid']
-
-    holeid = None
-    found = 0
-    for option in options:
-        if found !=1:
-            holeid, found = test_case(option)
-
-    return holeid;
 
 def selectbox(selection, options, display_text, key, guessheader=False, field_type=None):
 

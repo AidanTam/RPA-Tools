@@ -1,16 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-
-def weighted_cdf(weights):
-    '''
-    Weights sorted according to variable in ascending order
-    :param x:
-    :param weights:
-    :return:
-    '''
-    offset = (weights[0] / np.sum(weights)) / 2.
-    return np.cumsum(weights) / np.sum(weights) - offset;
+from pyrpa.utils import weighted_cdf
 
 def discretize_cdf(x, cdf, discretization):
     '''
@@ -26,13 +17,20 @@ def discretize_cdf(x, cdf, discretization):
 
 def prop_metal(x):
 
-    prop_metal = np.zeros(len(x), dtype=float)
+    # For each value v = x[j], compute sum(min(x, v)) / sum(x).
+    # Vectorised via a single sort: for sorted values, the capped sum at
+    # threshold v is sum(x <= v) + v * count(x > v). O(n log n) instead of O(n^2).
+    x = np.asarray(x, dtype=float)
+    n = len(x)
+    total = np.sum(x)
+    order = np.argsort(x, kind='stable')
+    xs = x[order]
+    csum = np.cumsum(xs)
+    right = np.searchsorted(xs, xs, side='right')
+    capped_sums = csum[right - 1] + xs * (n - right)
 
-    for i in range(len(x)):
-        j = len(x) - i - 1
-        capped = x.copy()
-        capped[capped > x[j]] = x[j]
-        prop_metal[j] = np.sum(capped) / np.sum(x)
+    prop_metal = np.empty(n, dtype=float)
+    prop_metal[order] = capped_sums / total
 
     return prop_metal;
 

@@ -7,7 +7,6 @@ import pyrpa.utils as ut
 import pyrpa.plotting as plotting
 import pyrpa.ijk as ijk
 import numpy as np
-import pyrpa.plotting as pl
 from sklearn.cluster import DBSCAN
 import matplotlib.pyplot as plt
 
@@ -21,7 +20,7 @@ rotconventions = ['sxyz', 'sxyx', 'sxzy',
                 'rzxz', 'rxyz', 'rzyz']
 
 def block_model_setup_datamine():
-    pass
+    raise NotImplementedError("block_model_setup_datamine is not yet implemented")
 
 def block_model_setup(origin=[0,0,0], blocksize=[10,10,10], numblocks=[100,100,100],
                       rotangles=[0.,0.,0.], rotation_origin=[0.,0.,0.], rotconvention='rzxz'):
@@ -99,7 +98,7 @@ class BlockModel(object):
                                             "use the block_model_setup function to define the dictionary."
             self.setup = setup
         else:
-            setup = block_model_setup()
+            self.setup = block_model_setup()
 
         self.gradefields = gradefields
         self.xyzfields = xyzfields
@@ -139,19 +138,19 @@ class BlockModel(object):
         # if a domain fields is specified we can report a stats for each grade field and each domain
         # if not report the stats on the entire block model
 
-        self.stats = pd.DataFrame()
+        stats_rows = []
         for gradef in self.gradefields:
             if self.domainf is not None:
                 for dom in self.data[domainf].unique():
                     filter = (self.data[domainf] == dom)
-                    self.stats = self.stats.append(ut.weighted_stats(self.data[gradef][filter],
-                                                                     weights=self.tonnes[filter],
-                                                                     gradef=gradef, dom=dom))
+                    stats_rows.append(ut.weighted_stats(self.data[gradef][filter],
+                                                        weights=self.tonnes[filter],
+                                                        gradef=gradef, dom=dom))
                 sortfields = ["Domain", "Variable"]
             else:
-                self.stats = self.stats.append(ut.weighted_stats(self.data[gradef], weights=self.tonnes, gradef=gradef))
+                stats_rows.append(ut.weighted_stats(self.data[gradef], weights=self.tonnes, gradef=gradef))
                 sortfields = ["Variable"]
-        self.stats = self.stats.sort_values(by=sortfields).reset_index(drop=True)
+        self.stats = pd.concat(stats_rows, ignore_index=True).sort_values(by=sortfields).reset_index(drop=True)
 
 
     def gt_curve(self, cutoffs, gradefield,
@@ -207,10 +206,10 @@ class BlockModel(object):
 
         if plot:
             if reporting_grades is not None:
-                pl.gt_curve(df, gradefields=reporting_grades, domain_value=domain_value,
+                plotting.gt_curve(df, gradefields=reporting_grades, domain_value=domain_value,
                             domain_field=self.domainf)
             else:
-                pl.gt_curve(df, gradefields=[gradefield], domain_value=domain_value,
+                plotting.gt_curve(df, gradefields=[gradefield], domain_value=domain_value,
                             domain_field=self.domainf)
 
         return df;
@@ -266,7 +265,7 @@ class BlockModel(object):
             if samples is not None:
                 smpaxf = samples.xyzfields[2]
         else:
-            raise ("Swath direction must be defined and must be 'X', 'Y' or 'Z'")
+            raise ValueError("Swath direction must be defined and must be 'X', 'Y' or 'Z'")
 
         bm = self.data.copy()
         if domain_value is not None:
@@ -285,8 +284,6 @@ class BlockModel(object):
 
         if '_tonnes' not in blockgrade_fields:
             blockgrade_fields.append('_tonnes')
-        if '_weights' not in samplegrade_fields:
-            samplegrade_fields.append('_weights')
         bmswath = bm.groupby(['_swath'], as_index=False, sort=True)[blockgrade_fields].sum()
         blockgrade_fields = blockgrade_fields[:-1]
 
@@ -294,6 +291,8 @@ class BlockModel(object):
             bmswath[bmgf] /= bmswath._tonnes
 
         if samples is not None:
+            if '_weights' not in samplegrade_fields:
+                samplegrade_fields.append('_weights')
             smp = samples.data.copy()
             if domain_value is not None:
                 assert samples.domainf is not None, "Sample domain field must be defined"
@@ -380,11 +379,11 @@ class BlockModel(object):
 
         for col in blk_avgs.columns:
             blk_avgs['blk - ' + col] = blk_avgs[col]
-            blk_avgs = blk_avgs.drop([col], 1)
+            blk_avgs = blk_avgs.drop(columns=[col])
         smp_avgs = samples.stats.pivot(index="Domain", columns="Variable", values="Average")
         for col in smp_avgs.columns:
             smp_avgs['smp - ' + col] = smp_avgs[col]
-            smp_avgs = smp_avgs.drop([col], 1)
+            smp_avgs = smp_avgs.drop(columns=[col])
 
         avgs = smp_avgs
         avgs[blk_avgs.columns] = blk_avgs
@@ -525,9 +524,7 @@ class BlockModel(object):
 
     def downscale(self, block_sizes=[1, 1, 1]):
 
-        xsubs = self.data[self.block_sizes[0]].unique()
-        ysubs = self.data[self.block_sizes[0]].unique()
-        zsubs = self.data[self.block_sizes[0]].unique()
+        raise NotImplementedError("downscale is not yet implemented")
 
     def label_connected_blocks(self, block_flag_f=None, full_face=False, min_touching_blocks=1, maxgap=0):
         '''

@@ -15,7 +15,7 @@ def read_file(path_file):
 
 def read_excel(file_excel, sheet_name):
     wb = openpyxl.load_workbook(file_excel)
-    sheet_names = wb.get_sheet_names()
+    sheet_names = wb.sheetnames
     if sheet_name not in sheet_names:
         ws = wb.active
     else:
@@ -38,20 +38,20 @@ def read_excel(file_excel, sheet_name):
     wb.close()
     return result
 
-    @keyword
-    def to_excel(self, file_excel, data_list):
 
-        data_list = list(data_list)
+def to_excel(file_excel, data_list):
 
-        wb = openpyxl.Workbook()
-        ws = wb.active
+    data_list = list(data_list)
 
-        for row_index, row_list in enumerate(data_list):
-            row_index = row_index + 1
+    wb = openpyxl.Workbook()
+    ws = wb.active
 
-            for col_index, cell_value in enumerate(row_list):
-                col_index = col_index + 1
+    for row_index, row_list in enumerate(data_list):
+        row_index = row_index + 1
 
-                ws.cell(row=row_index, column=col_index, value=cell_value)
+        for col_index, cell_value in enumerate(row_list):
+            col_index = col_index + 1
 
-        wb.save(file_excel)
+            ws.cell(row=row_index, column=col_index, value=cell_value)
+
+    wb.save(file_excel)
