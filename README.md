@@ -116,18 +116,23 @@ RPA-Tools/
 │   ├── contact_plot.py
 │   └── ...                       # Backend computation modules
 ```
+---
 
+## Recent Improvements
 
-QAQC Module Improvements List			
-			
-Blanks			
-Allow adjustment of the Y-axis limits for blank values in the plot			
-			
-Standards (CRMs)			
-Automatic detection of header columns in the standards sub-module			
-Rename the fields ‘Categorical column’ to ‘Project’ and ‘Optional group field 1’ to ‘Lab’.”			
-Change the field ‘Unit’ as a trackable field without predefined values, and automatically detect it from the column header, as units may vary across different methods and standards			
-Remove the upper and lower limit parameters calculated in the summary CRM table			
+| Module | Improvement |
+|--------|-------------|
+| Blanks | Y-axis limits can now be adjusted for blank values in the plot (Custom Y-limits in the Style options) |
+| Standards (CRMs) | Automatic detection of header columns (Date, Grade, CRM, Element, Expected Value, Project, Lab, Unit) |
+| Standards (CRMs) | Renamed fields: `Categorical column` → `Project`, `Optional Grouping Field 1` → `Lab` |
+| Standards (CRMs) | `Unit` is now a trackable, auto-detected column (read per-chart) with a free-text fallback, instead of a fixed predefined list |
+| Standards (CRMs) | Removed the upper/lower limit parameters from the combined CRM summary table |
+| Capping | `Metal Loss` in the Capping Summary table now matches the `Percent Metal Loss` in the Decile Analysis table (computed from unrounded weighted averages) |
+| Capping | Fixed the Capping Summary table rendering as all-NaN under newer pandas (chained-assignment issue) |
 
-Capping alanysis - Match the 'Metal Loss' calculation from the 'Capping Summary table' to the calculation of the ' Decile Analysis Table'
+## Planned / Outstanding Updates
 
+| Module | Update | Notes |
+|--------|--------|-------|
+| Standards (CRMs) | Restore the "no grouping field" chart branch | When no grouping field is selected, no chart/summary currently renders ([CRMs_ui.py](pyrpa/UI/CRMs_ui.py) ~line 1193 is a stub). Partly masked now that `Lab` auto-detects and triggers the working grouped path. |
+| Dependencies | Reconcile `requirements.txt` with the installed environment | Pinned versions (pandas 1.4.2, etc.) differ from the environment in use (pandas 3.x); watch for chained-assignment patterns elsewhere. |
