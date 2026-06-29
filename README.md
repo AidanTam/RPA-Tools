@@ -116,3 +116,18 @@ RPA-Tools/
 │   ├── contact_plot.py
 │   └── ...                       # Backend computation modules
 ```
+
+
+QAQC Module Improvements List			
+			
+Blanks			
+Allow adjustment of the Y-axis limits for blank values in the plot			
+			
+Standards (CRMs)			
+Automatic detection of header columns in the standards sub-module			
+Rename the fields ‘Categorical column’ to ‘Project’ and ‘Optional group field 1’ to ‘Lab’.”			
+Change the field ‘Unit’ as a trackable field without predefined values, and automatically detect it from the column header, as units may vary across different methods and standards			
+Remove the upper and lower limit parameters calculated in the summary CRM table			
+
+Capping alanysis - Match the 'Metal Loss' calculation from the 'Capping Summary table' to the calculation of the ' Decile Analysis Table'
+
