@@ -25,7 +25,10 @@ def do_nothing():
 path = os.path.dirname(__file__)
 
 def streamlit_run(module):
-    subprocess.check_call(["powershell.exe", "streamlit run " + path + "\\" + module], shell=True)
+    repo_root = os.path.dirname(os.path.dirname(path))
+    existing_pp = os.environ.get('PYTHONPATH', '')
+    env = {**os.environ, 'PYTHONPATH': repo_root + (os.pathsep + existing_pp if existing_pp else '')}
+    subprocess.Popen(['streamlit', 'run', os.path.join(path, module)], env=env)
 
 logo = Image.open(path + "\\" + 'logo-slr-2018.png')
 st.sidebar.image(logo, caption='')
@@ -141,26 +144,28 @@ if prog_radio == prog_options[5]:
     st.markdown("## QA/QC Tools:")
 
     if st.button("Standards"):
-        pass
+        streamlit_run(module="CRMs_ui.py")
 
     if st.button("Blanks"):
-        pass
+        streamlit_run(module="Blanks_ui.py")
 
     if st.button("Duplicates"):
-        pass
+        streamlit_run(module="Duplicates_ui_nuggets.py")
 
+    if st.button("Check Assays"):
+        streamlit_run(module="Check_assay_ui.py")
 
+    if st.button("Z-Score"):
+        streamlit_run(module="Z_Score_ui.py")
 
 if prog_radio == prog_options[6]:
     st.markdown("## Data Validation ")
 
     if st.button("Data Verification tool"):
         streamlit_run(module="data_verification_ui.py")
-        pass
 
     if st.button("Drill Hole Comparison"):
         streamlit_run(module="Get_Nearest_ui.py")
-        pass
 
 
 

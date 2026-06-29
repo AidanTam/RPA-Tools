@@ -1,5 +1,6 @@
 import streamlit as st
 import sys
+import os
 from importlib import reload
 import pandas as pd
 from pyrpa.UI import common
@@ -9,19 +10,22 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.io as pio
-from docxtpl import DocxTemplate, InlineImage
-from docx.shared import Mm 
+try:
+    from docxtpl import DocxTemplate, InlineImage
+    from docx.shared import Mm
+except ImportError:
+    DocxTemplate = InlineImage = Mm = None
 # import openai
 import io
 import tempfile
 
 # from st_aggrid import AgGrid
-@st.cache
-def do_nothing():
-    pass
 
-
-doc = DocxTemplate(r'dC:\pyrpa-master\pyrpa-master\pyrpa\UI\SLR amazing report.docx')
+try:
+    _report_template = os.path.join(os.path.dirname(__file__), 'SLR amazing report.docx')
+    doc = DocxTemplate(_report_template) if DocxTemplate and os.path.exists(_report_template) else None
+except Exception:
+    doc = None
 if 'AI_Intorduction' not in st.session_state:
     st.session_state['AI_Intorduction'] = ""
 if 'piechartimage' not in st.session_state:
