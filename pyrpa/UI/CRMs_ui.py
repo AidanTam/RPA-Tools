@@ -733,7 +733,8 @@ if file is not None:
     CRM_col       = st.sidebar.selectbox('CRM Column',   columns, index=crm_idx,  key='CRM_col')
     elementcolumn = st.sidebar.selectbox('Element Column', columns, index=elements_idx, key='elementcolumn')
     expected_val_col = st.sidebar.selectbox('Expected Value Column', columns, index=expected_idx, key='expected_val_col')
-    source_col    = st.sidebar.selectbox('Categorical column', columns, key='source_col')
+    project_idx   = auto_select(columns, "Project")
+    source_col    = st.sidebar.selectbox('Project', columns, index=project_idx, key='source_col')
 
     # convert grades to float (with quick feedback)
     try:
@@ -744,8 +745,10 @@ if file is not None:
     elements = st.multiselect('Select Element', data[elementcolumn].unique(), key='element')
 
     # ---------------- OPTIONAL GROUPING FIELDS (unchanged) -------
-    optional_group_field_1 = st.sidebar.selectbox('Optional Grouping Field 1',
+    lab_idx = auto_select(['None'] + columns, "Lab")
+    optional_group_field_1 = st.sidebar.selectbox('Lab',
                                                   ['None'] + columns,
+                                                  index=lab_idx,
                                                   key='optional_group_field_1')
     optional_group_field_2 = st.sidebar.selectbox('Optional Grouping Field 2',
                                                   ['None'] + columns,
@@ -754,26 +757,22 @@ if file is not None:
                                                   ['None'] + columns,
                                                   key='optional_group_field_3')
 
-    # ---------------- UNIT SELECTION (unchanged) -----------------
-    if any(col.lower() == "unit" for col in columns):
-        unit_options     = [col for col in columns if col.lower() == "unit"] + ["Custom"]
-        unit_selection   = st.sidebar.selectbox("Unit Source", unit_options, key="unit_option")
-        if unit_selection == "Custom":
-            custom_unit  = st.sidebar.text_input("Enter Custom Unit", value="", key="custom_unit")
-            unit_col_name = None
-        else:
-            unit_col_name = unit_selection
-            custom_unit   = None
+    # ---------------- UNIT (trackable, auto-detected from header) -----------------
+    # Units can vary across methods/standards, so read them from a data column when
+    # available rather than from a fixed predefined list. Falls back to free text.
+    unit_idx = auto_select(['None'] + columns, "Unit")
+    unit_col_sel = st.sidebar.selectbox('Unit Column', ['None'] + columns,
+                                        index=unit_idx, key='unit_col_sel')
+    custom_unit = st.sidebar.text_input("Custom Unit (used if no Unit column selected)",
+                                        value="", key="custom_unit")
+    if unit_col_sel != 'None':
+        unit_col_name  = unit_col_sel       # unit is read per-chart from this column
+        unit           = None
+        unit_selection = None
     else:
-        unit_options   = ["%", "mg/L", "ppb", "Custom"]
-        unit_selection = st.sidebar.selectbox("Unit", unit_options, key="unit_option")
-        if unit_selection == "Custom":
-            custom_unit = st.sidebar.text_input("Enter Custom Unit", value="", key="custom_unit")
-            unit        = None
-        else:
-            unit        = unit_selection
-            custom_unit = None
-        unit_col_name   = None
+        unit_col_name  = None
+        unit           = custom_unit
+        unit_selection = "Custom"
 
     # ----------------------- STYLE OPTIONS ------------------------
     slr_text       = st.sidebar.text_input("SLR Text",
@@ -1003,10 +1002,6 @@ if file is not None:
                             "Number of Outliers": num_outliers,
                             "Bias (%)": bias,
                             "Failure Rate (%)": percentage_outliers,
-                            "Upper Bound (2SD)": mean_value_au + (twostd * standard_deviation),
-                            "Lower Bound (2SD)": mean_value_au - (twostd * standard_deviation),
-                            'Upper Bound (3SD)': mean_value_au + (threestd * standard_deviation),
-                            'Lower Bound (3SD)': mean_value_au - (threestd * standard_deviation)
                         }
                         if isinstance(grp_values, tuple):
                             for field, val in zip(group_fields, grp_values):
@@ -1026,8 +1021,6 @@ if file is not None:
                             "Number of Outliers": num_outliers,
                             "Bias (%)": bias,
                             "Failure Rate (%)": percentage_outliers,
-                            'Upper Limit': data_subset[upperlimit_col].mean(),
-                            'Lower Limit': data_subset[lowerlimit_col].mean(),
                             'Source': data_subset[source_col].iloc[0]
                         }
                         if isinstance(grp_values, tuple):

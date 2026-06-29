@@ -405,7 +405,7 @@ class capping(object):
                  "Cap Percentile"]
         columns = ["Uncapped", "Capped"]
 
-        df = pd.DataFrame(columns=columns, index=index)
+        df = pd.DataFrame(columns=columns, index=index, dtype=object)
 
         x = self.samples.data[self.gradefield]
         capped = x.copy()
@@ -413,29 +413,40 @@ class capping(object):
         if cap is not None:
             capped[capped >= cap] = cap
 
-        for column in columns:
-            df[column].loc["Variable"] = self.label
-            df[column].loc["Count"] = len(x)
-            df[column].loc["Min"] = np.min(x)
+        # Weighted averages (unrounded) are reused below.
+        uncapped_avg = np.average(x, weights=self.weights)
+        capped_avg = np.average(capped, weights=self.weights)
+        uncapped_avg_r = np.round(uncapped_avg, self.decimal_places)
+        capped_avg_r = np.round(capped_avg, self.decimal_places)
 
-        df['Uncapped'].loc["Max"] = np.round(np.max(x), self.decimal_places)
-        df['Capped'].loc["Max"] = np.round(np.max(capped), self.decimal_places)
-        df['Uncapped'].loc["Average"] = np.round(np.average(x, weights=self.weights), self.decimal_places)
-        df['Capped'].loc["Average"] = np.round(np.average(capped, weights=self.weights), self.decimal_places)
-        df['Uncapped'].loc["CV"] = np.round(np.sqrt(ut.weighted_variance(x, weights=self.weights)) / df['Uncapped'].loc[
-            "Average"], self.decimal_places)
-        df['Capped'].loc["CV"] = np.round(np.sqrt(ut.weighted_variance(capped, weights=self.weights)) / df['Capped'].loc[
-            "Average"], self.decimal_places)
-        df['Uncapped'].loc["Number Capped"] = 0
-        df['Capped'].loc["Number Capped"] = len(x[x != capped])
-        df['Uncapped'].loc["Metal Loss"] = "0%"
-        df['Capped'].loc["Metal Loss"] = str(
-            np.round(abs(df['Capped'].loc["Average"] / df['Uncapped'].loc["Average"] - 1.) * 100., self.decimal_places)) + "%"
-        df['Uncapped'].loc["Cap Percentile"] = 100.
+        # Use single-step .loc[row, col] assignment. Chained assignment
+        # (df[col].loc[row] = ...) silently fails under pandas copy-on-write,
+        # leaving the whole table as NaN.
+        for column in columns:
+            df.loc["Variable", column] = self.label
+            df.loc["Count", column] = len(x)
+            df.loc["Min", column] = np.min(x)
+
+        df.loc["Max", "Uncapped"] = np.round(np.max(x), self.decimal_places)
+        df.loc["Max", "Capped"] = np.round(np.max(capped), self.decimal_places)
+        df.loc["Average", "Uncapped"] = uncapped_avg_r
+        df.loc["Average", "Capped"] = capped_avg_r
+        df.loc["CV", "Uncapped"] = np.round(np.sqrt(ut.weighted_variance(x, weights=self.weights)) / uncapped_avg_r, self.decimal_places)
+        df.loc["CV", "Capped"] = np.round(np.sqrt(ut.weighted_variance(capped, weights=self.weights)) / capped_avg_r, self.decimal_places)
+        df.loc["Number Capped", "Uncapped"] = 0
+        df.loc["Number Capped", "Capped"] = len(x[x != capped])
+        df.loc["Metal Loss", "Uncapped"] = "0%"
+        # Compute Metal Loss from unrounded weighted averages so the value matches
+        # the 'Percent Metal Loss' in decile_analysis() (which divides unrounded
+        # total metal and rounds only at the end). Using the pre-rounded Average
+        # cells here introduced a small discrepancy between the two tables.
+        df.loc["Metal Loss", "Capped"] = str(
+            np.round(abs(capped_avg / uncapped_avg - 1.) * 100., self.decimal_places)) + "%"
+        df.loc["Cap Percentile", "Uncapped"] = 100.
         if cap is None:
-            df['Capped'].loc["Cap Percentile"] = 100.
+            df.loc["Cap Percentile", "Capped"] = 100.
         else:
-            df['Capped'].loc["Cap Percentile"] =np.round(np.interp(x=cap, xp=x, fp=self.cdf) * 100.,3)
+            df.loc["Cap Percentile", "Capped"] = np.round(np.interp(x=cap, xp=x, fp=self.cdf) * 100., 3)
 
         return df
 

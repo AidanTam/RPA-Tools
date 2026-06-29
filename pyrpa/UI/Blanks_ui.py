@@ -418,6 +418,12 @@ with st.sidebar.expander("📐 Style"):
     point_col  = st.color_picker("Point colour", st.session_state.get("p_col","#000000"), key="p_col")
     limit_col  = st.color_picker("Limit colour",  st.session_state.get("lim_col","#86A586"), key="lim_col")
     log_y      = st.checkbox("Log Y-axis", value=st.session_state.get("log_y",False), key="log_y")
+    custom_ylim = st.checkbox("Custom Y-limits", value=st.session_state.get("custom_ylim",False), key="custom_ylim")
+    if custom_ylim:
+        y_axis_min = st.number_input("Y min", value=float(st.session_state.get("y_axis_min",0.0)), key="y_axis_min")
+        y_axis_max = st.number_input("Y max", value=float(st.session_state.get("y_axis_max",1.0)), key="y_axis_max")
+    else:
+        y_axis_min = y_axis_max = None
 
 # ───────── Run button ─────────
 if st.sidebar.button("🚀 Run"): st.session_state.run_plots=True
@@ -468,6 +474,8 @@ for el in elems_sel:
                 if not fails.empty:
                     ax.scatter(fails[date_col] if date_col!="None" else fails.index,fails[val_col],s=point_size,color="red",label="Fails")
                 if log_y: ax.set_yscale("log")
+                if custom_ylim and y_axis_min is not None and y_axis_max is not None:
+                    ax.set_ylim(y_axis_min, y_axis_max)
                 unit=sub[unit_col].dropna().iloc[0] if unit_col!="None" and not sub[unit_col].dropna().empty else ""
                 typ_lbl=typ if typ is not None else ""
                 ax.set_ylabel(f"{el} ({unit})" if unit else el)
