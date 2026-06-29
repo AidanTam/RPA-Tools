@@ -80,16 +80,13 @@ xyzfields = common.strip_dflist(_temp_dict.loc['XYZ Fields', 'Parameter'])
 domains = common.strip_dflist(_temp_dict.loc['Domains', 'Parameter'])
 
 _temp_dict.loc['Description', 'Parameter'] = st.sidebar.text_input("Description", _temp_dict.loc['Description', 'Parameter'])
-infiles = common.get_file_list([".csv", ".dm"])
-_temp_dict.loc['Filename', 'Parameter'] = common.selectbox(selection=_temp_dict.loc['Filename', 'Parameter'],
-                                                                options=infiles,
-                                                                display_text="Data File (.csv or .dm)",
-                                                                key='Filename')
+_infile, df = common.upload_or_select([".csv", ".dm"], initial_value=_temp_dict.loc['Filename', 'Parameter'], key='Filename')
+if _infile is not None:
+    _temp_dict.loc['Filename', 'Parameter'] = _infile
 
 # big outer if is checking to see if filename is defined
 
-if _temp_dict.loc['Filename', 'Parameter'] != "--None--":
-    df = common.load_file(_temp_dict.loc['Filename', 'Parameter'])
+if df is not None:
     header = common.get_header(df)
 
     _temp_dict.loc['Grade Field', 'Parameter'] = common.selectbox(selection=_temp_dict.loc['Grade Field', 'Parameter'],

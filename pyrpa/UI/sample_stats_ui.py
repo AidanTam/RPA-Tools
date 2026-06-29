@@ -42,18 +42,9 @@ if st.sidebar.checkbox("Load Settings"):
     out_settings = stats_settings_df.loc['Stats Settings', 'Parameter']
 
 
-infiles = common.get_file_list([".csv", ".dm"])
+infile, df = common.upload_or_select([".csv", ".dm"], initial_value=infile)
 
-if infile is not None:
-    idx = common.get_idx(infiles, infile)
-else:
-    idx = 0
-
-infile = st.sidebar.selectbox("Data File (.csv or .dm)", infiles, index=idx)
-
-if infile != "--None--":
-
-    df = common.load_file(infile)
+if df is not None:
     header = common.get_header(df)
 
     gradefields = st.sidebar.multiselect("Grade Fields", header, gradefields)
