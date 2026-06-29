@@ -38,15 +38,15 @@ maxb = st.sidebar.text_input("Maximum block size", value='10.')
 stepb = st.sidebar.text_input("Step Size", value='5.')
 bsizes = np.arange(float(minb), float(maxb) + float(stepb), float(stepb))
 st.sidebar.markdown("## Discretization")
-xd=st.sidebar.number_input("X", value=5)
-yd=st.sidebar.number_input("Y", value=5)
-zd=st.sidebar.number_input("Z", value=5)
+xd=st.sidebar.number_input("X", value=5, key="disc_x")
+yd=st.sidebar.number_input("Y", value=5, key="disc_y")
+zd=st.sidebar.number_input("Z", value=5, key="disc_z")
 disc = [xd, yd, zd]
 st.sidebar.markdown("## Variogram")
 st.sidebar.markdown("### Rotation")
-xrt=st.sidebar.number_input("Z", value=0.)
-yrt=st.sidebar.number_input("X", value=0.)
-zrt=st.sidebar.number_input("Y", value=0.)
+xrt=st.sidebar.number_input("Z", value=0., key="rot_z")
+yrt=st.sidebar.number_input("X", value=0., key="rot_x")
+zrt=st.sidebar.number_input("Y", value=0., key="rot_y")
 rot = [xrt, yrt, zrt]
 nugget = st.sidebar.number_input("Nugget", value=0.1)
 ns = st.sidebar.number_input("Number of Structures", value=1)
@@ -67,9 +67,9 @@ nugget /= sumvar
 variances /= sumvar
 st.sidebar.markdown("### Ranges")
 for i in range(ns):
-    xr = st.sidebar.number_input("X Range Structure " + str(i+1), value=100, key="r" + str(i+1))
-    yr = st.sidebar.number_input("Y Range Structure " + str(i + 1), value=100, key="r" + str(i + 1))
-    zr = st.sidebar.number_input("Z Range Structure " + str(i + 1), value=100, key="r" + str(i + 1))
+    xr = st.sidebar.number_input("X Range Structure " + str(i+1), value=100, key="xr" + str(i+1))
+    yr = st.sidebar.number_input("Y Range Structure " + str(i + 1), value=100, key="yr" + str(i + 1))
+    zr = st.sidebar.number_input("Z Range Structure " + str(i + 1), value=100, key="zr" + str(i + 1))
     vranges.append([xr,yr,zr])
 
 results = []
