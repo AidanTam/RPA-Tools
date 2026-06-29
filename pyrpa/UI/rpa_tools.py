@@ -23,4 +23,4 @@ st.markdown("**Version 1.0.2**")
 st.markdown("Select a tool from the sidebar to get started.")
 
 image = Image.open(os.path.join(path, 'gibraltar_0857.jpg'))
-st.image(image, caption='', use_column_width=True)
+st.image(image, caption='', use_container_width=True)
