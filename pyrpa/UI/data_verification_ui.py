@@ -47,7 +47,7 @@ def replace_values(value):
         return value
 
 def replace_detection_limits():
-    st.session_state.mergeddf = st.session_state.mergeddf.applymap(replace_values)
+    st.session_state.mergeddf = st.session_state.mergeddf.map(replace_values)
 
 dataframes = []
 elementdf = {}
@@ -81,52 +81,51 @@ with st.sidebar:
     assaycols = st.multiselect('Assay Columns to keep', st.session_state.assaydf.columns)
     if assay_file is not None:
         st.session_state.assaydf = pd.read_csv(assay_file)
-    Elements = [k for k in range(st.number_input('Number of Element',min_value=1, max_value=None, value=1, step=1))]
-    col1, col2 = st.columns(2)
+    Elements = [k for k in range(st.number_input('Number of Element', min_value=1, value=1, step=1))]
 
-    certelements = []
-    assayelements = []
-    with col1:
-        st.header('Certificate')
-        certif_sample = st.selectbox('Certif.Sample Field',st.session_state.filter)
-        for i in Elements:
-            c_element = st.selectbox('C-Element '+str(i),st.session_state.filter)
-            certelements.append(c_element)
-    with col2:
-        st.header('Assay')
-        assay_sample = st.selectbox('Assay Sample Field',st.session_state.assaydf.columns)
-        for j in Elements:
-            a_element = st.selectbox('A-Element '+str(j),st.session_state.assaydf.columns)
-            assayelements.append(a_element)
+certelements = []
+assayelements = []
+col1, col2 = st.columns(2)
+with col1:
+    st.header('Certificate')
+    certif_sample = st.selectbox('Certif.Sample Field', st.session_state.filter)
+    for i in Elements:
+        c_element = st.selectbox('C-Element ' + str(i), st.session_state.filter)
+        certelements.append(c_element)
+with col2:
+    st.header('Assay')
+    assay_sample = st.selectbox('Assay Sample Field', st.session_state.assaydf.columns)
+    for j in Elements:
+        a_element = st.selectbox('A-Element ' + str(j), st.session_state.assaydf.columns)
+        assayelements.append(a_element)
 
 
 
 # merged_df = None    
 with st.expander("Data Checker"):
-    try:
-        index = filenames.index(filetocheck)
-        byte_data = files[index].getvalue()
-        string_data = byte_data.decode('utf-8')
-        lines = string_data.splitlines()
-        for i, line in enumerate(lines):
-            header_row = None
-            if Headerkeywrod in line:
-                header_row = i-1
-                if header_row == -1 :
-                    header_row = 0
-                break
-        st.write(str(header_row) + ' Rows Skipped')
-        st.session_state.skipped = [i for i in range(header_row)]
-        st.session_state.skipped.append(RowsToSkip)
-        df = pd.read_csv(files[index],skiprows=st.session_state.skipped, header=[i for i in range(HeaderRows)])
-        df = df.dropna(how='all')
-        st.dataframe(df)
-
-
-    except Exception as e:
-        st.write(e)
-        st.write('Please select a file to Preview')
-        pass
+    if not filenames or filetocheck is None:
+        st.info('Please upload certificate files to preview.')
+    else:
+        try:
+            index = filenames.index(filetocheck)
+            byte_data = files[index].getvalue()
+            string_data = byte_data.decode('utf-8')
+            lines = string_data.splitlines()
+            for i, line in enumerate(lines):
+                header_row = None
+                if Headerkeywrod in line:
+                    header_row = i-1
+                    if header_row == -1:
+                        header_row = 0
+                    break
+            st.write(str(header_row) + ' Rows Skipped')
+            st.session_state.skipped = [i for i in range(header_row)]
+            st.session_state.skipped.append(RowsToSkip)
+            df = pd.read_csv(files[index], skiprows=st.session_state.skipped, header=[i for i in range(HeaderRows)])
+            df = df.dropna(how='all')
+            st.dataframe(df)
+        except Exception as e:
+            st.error(f'Error reading file: {e}')
 
 
 with st.expander("Merged Table"):
@@ -156,29 +155,26 @@ with st.expander("Assay Table"):
 
 
 with st.expander("Analysis"):
-    try:
-        for celm,aelem in zip(certelements,assayelements):
-            # st.write(assayelements)
-            # st.write(certelements)
-            # st.session_state.analysisdf = st.session_state.mergeddf
-            st.session_state.analysisdf = st.session_state.mergeddf[certcols+[celm]].merge(st.session_state.assaydf[assaycols+[aelem]], left_on=certif_sample, right_on=assay_sample)
-            st.session_state.analysisdf[celm] = st.session_state.analysisdf[celm].astype('float64')
-            st.session_state.analysisdf[aelem] = st.session_state.analysisdf[aelem].astype('float64')
-            st.session_state.analysisdf = st.session_state.analysisdf.dropna(subset=[celm, aelem], how='any')
-            # st.dataframe(st.session_state.analysisdf.dtypes)
-            st.session_state.analysisdf['Difference'] = abs(st.session_state.analysisdf[celm]-st.session_state.analysisdf[aelem])
-            st.dataframe(st.session_state.analysisdf)
-            elementdf.update({aelem: st.session_state.analysisdf})
-            st.download_button(
-                                label="Download data as CSV",
-                                data=st.session_state.analysisdf.to_csv().encode('utf-8'),
-                                file_name=aelem+'_verif.csv',
-                                mime='text/csv',
-                            )
-    except Exception as e:
-        st.write(e)
-        # st.info("Make sure the elements columns are not in the column to keep option")
-        pass
+    if st.session_state.mergeddf.empty or st.session_state.assaydf.empty:
+        st.info('Merge certificate files and upload an assay file to run analysis.')
+    else:
+        try:
+            for celm, aelem in zip(certelements, assayelements):
+                st.session_state.analysisdf = st.session_state.mergeddf[certcols+[celm]].merge(st.session_state.assaydf[assaycols+[aelem]], left_on=certif_sample, right_on=assay_sample)
+                st.session_state.analysisdf[celm] = st.session_state.analysisdf[celm].astype('float64')
+                st.session_state.analysisdf[aelem] = st.session_state.analysisdf[aelem].astype('float64')
+                st.session_state.analysisdf = st.session_state.analysisdf.dropna(subset=[celm, aelem], how='any')
+                st.session_state.analysisdf['Difference'] = abs(st.session_state.analysisdf[celm]-st.session_state.analysisdf[aelem])
+                st.dataframe(st.session_state.analysisdf)
+                elementdf.update({aelem: st.session_state.analysisdf})
+                st.download_button(
+                    label="Download data as CSV",
+                    data=st.session_state.analysisdf.to_csv().encode('utf-8'),
+                    file_name=aelem+'_verif.csv',
+                    mime='text/csv',
+                )
+        except Exception as e:
+            st.error(f'Analysis error: {e}')
 
 with st.expander("Reporting"):
     col3,col4 = st.columns(2)
