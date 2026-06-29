@@ -319,6 +319,7 @@ from matplotlib.ticker import FuncFormatter
 import streamlit as st
 from pptx import Presentation
 from pptx.util import Inches
+from pyrpa.UI import common
 
 # ───────── page ─────────
 st.set_page_config(page_title="Z‑Score QAQC Charts", layout="wide")
@@ -355,13 +356,13 @@ if cfg_up and not st.session_state.get("cfg_loaded"):
     st.session_state.update(json.load(cfg_up)); st.session_state.cfg_loaded=True
     st.success("Config loaded!")
 
-# ───────── CSV load ─────────
-csv_up = st.sidebar.file_uploader("📂 Upload CSV", ["csv"], key="csv")
+# ───────── data load ─────────
+csv_up = st.sidebar.file_uploader("📂 Upload data (CSV or Excel)", ["csv","xlsx","xls"], key="csv")
 df = None
 if csv_up is not None:
-    df = pd.read_csv(csv_up); st.session_state["csv_path"] = ""
+    df = common.read_data_file(csv_up); st.session_state["csv_path"] = ""
 elif st.session_state.get("csv_path") and os.path.exists(st.session_state["csv_path"]):
-    df = pd.read_csv(st.session_state["csv_path"])
+    df = common.read_data_file(st.session_state["csv_path"])
 if df is None:
     st.info("Upload CSV or load config to begin."); st.stop()
 

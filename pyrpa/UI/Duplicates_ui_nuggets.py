@@ -621,6 +621,7 @@ import os, io, json, tempfile, re
 import numpy as np, pandas as pd, matplotlib.pyplot as plt, streamlit as st
 from pptx import Presentation
 from pptx.util import Inches
+from pyrpa.UI import common
 
 st.set_page_config(page_title="Duplicate QAQC Charts", layout="wide")
 st.title("🪓 Duplicate QAQC Charts")
@@ -657,14 +658,14 @@ if cfg_file and not st.session_state.cfg_loaded:
     st.session_state.cfg_loaded = True
     st.success("Config loaded!")
 
-# ───────── 2) CSV load ─────────
-csv_bytes = st.sidebar.file_uploader("📂 Upload CSV", ["csv"], key="csv_bytes")
+# ───────── 2) data load ─────────
+csv_bytes = st.sidebar.file_uploader("📂 Upload data (CSV or Excel)", ["csv","xlsx","xls"], key="csv_bytes")
 df = None
 if csv_bytes is not None:
-    df = pd.read_csv(csv_bytes)
+    df = common.read_data_file(csv_bytes)
     st.session_state["csv_path"] = ""
 elif st.session_state.get("csv_path") and os.path.exists(st.session_state["csv_path"]):
-    df = pd.read_csv(st.session_state["csv_path"])
+    df = common.read_data_file(st.session_state["csv_path"])
 
 if df is None:
     st.info("Upload CSV or load config."); st.stop()

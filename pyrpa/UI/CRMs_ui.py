@@ -632,6 +632,7 @@ import numpy as np
 from matplotlib.ticker import MaxNLocator, MultipleLocator
 import matplotlib.colors as mcolors
 import json
+from pyrpa.UI import common
 
 # ------------------------------------------------------------------
 #                      HELPER FUNCTIONS
@@ -714,9 +715,9 @@ if saved_progress_file is not None:
     st.success("Progress loaded!")
     st.info("Please upload the same data file used in the saved progress.")
 
-file = st.sidebar.file_uploader("Choose a data file")
+file = st.sidebar.file_uploader("Choose a data file (CSV or Excel)", ["csv","xlsx","xls"])
 if file is not None:
-    data     = pd.read_csv(file)
+    data     = common.read_data_file(file)
     columns  = list(data.columns)                # for auto-complete / filters
 
     # ---------------------- SIDEBAR SETTINGS ----------------------

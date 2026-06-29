@@ -65,6 +65,15 @@ def load_file(infile):
         raise ValueError("Invalid file type")
     return df;
 
+def read_data_file(uploaded):
+    """Read an uploaded data file (or path) as a DataFrame, supporting CSV and Excel.
+    Picks the reader from the file extension so the QA/QC uploaders accept .xlsx/.xls
+    as well as .csv."""
+    name = getattr(uploaded, 'name', str(uploaded))
+    if name.lower().endswith(('.xlsx', '.xls')):
+        return pd.read_excel(uploaded)
+    return pd.read_csv(uploaded)
+
 def upload_or_select(extensions, display_text="Data File (.csv or .dm)", key="file", sidebar=True, initial_value=None):
     """Show a drag-and-drop file uploader then a directory-scan selectbox as fallback.
     Upload takes priority. Returns (filename_str, DataFrame) or (None, None)."""

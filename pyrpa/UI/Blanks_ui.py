@@ -317,6 +317,7 @@ import matplotlib.pyplot as plt, matplotlib.dates as mdates
 import streamlit as st
 from pptx import Presentation
 from pptx.util import Inches
+from pyrpa.UI import common
 
 st.set_page_config(page_title="Blanks QAQC Charts", layout="wide")
 st.title("🧼 Blanks QAQC Charts")
@@ -351,14 +352,14 @@ cfg_file = st.sidebar.file_uploader("🔄 Load config (JSON)", ["json"])
 if cfg_file and not st.session_state.get("cfg_loaded"):
     st.session_state.update(json.load(cfg_file)); st.session_state.cfg_loaded=True; st.success("Config loaded!")
 
-# ───────── CSV load ─────────
-csv_bytes = st.sidebar.file_uploader("📂 Upload CSV", ["csv"], key="csv_bytes")
+# ───────── data load ─────────
+csv_bytes = st.sidebar.file_uploader("📂 Upload data (CSV or Excel)", ["csv","xlsx","xls"], key="csv_bytes")
 df=None
 if csv_bytes is not None:
-    df = pd.read_csv(csv_bytes); st.session_state["csv_path"]=""
+    df = common.read_data_file(csv_bytes); st.session_state["csv_path"]=""
 elif st.session_state.get("csv_path") and os.path.exists(st.session_state["csv_path"]):
-    df = pd.read_csv(st.session_state["csv_path"])
-if df is None: st.info("Upload CSV or load config."); st.stop()
+    df = common.read_data_file(st.session_state["csv_path"])
+if df is None: st.info("Upload a CSV/Excel file or load config."); st.stop()
 
 # ───────── column mapping ─────────
 with st.sidebar.expander("🗺️ Column mapping", True):
@@ -370,13 +371,30 @@ with st.sidebar.expander("🗺️ Column mapping", True):
     lod_col  = st.selectbox("LOD/DL column", ["None"]+list(df.columns), index=idx_of(st.session_state.get("lod_col","None"), ["None"]+list(df.columns)), key="lod_col")
     type_col = st.selectbox("Blank‑type column", ["None"]+list(df.columns), index=idx_of(st.session_state.get("type_col","None"), ["None"]+list(df.columns)), key="type_col")
 
-# ───────── filters & options (unchanged) ─────────
+# Default the Labs/Elements/Types selections to "all" for the currently-mapped column.
+# Seeding session_state before the widget is created is the reliable way to set a
+# multiselect's value (passing default= alongside key= is ignored once the key has
+# history). Re-seeds whenever the stored selection has no valid values for the current
+# column (first load, or after the mapped column changes), so charts render without the
+# user having to open Core filters and pick everything manually.
+def _seed_all(sel_key, col):
+    opts = list(df[col].dropna().unique())
+    cur = st.session_state.get(sel_key)
+    if not cur or not any(v in opts for v in cur):
+        st.session_state[sel_key] = opts
+
+_seed_all("labs_sel", lab_col)
+_seed_all("elems_sel", elem_col)
+if type_col != "None":
+    _seed_all("types_sel", type_col)
+
+# ───────── filters & options ─────────
 with st.sidebar.expander("🔎 Core filters"):
-    labs_sel  = st.multiselect("Labs", df[lab_col].dropna().unique(), default=safe_defaults(st.session_state.get("labs_sel"), df[lab_col].unique()), key="labs_sel")
-    elems_sel = st.multiselect("Elements", df[elem_col].dropna().unique(), default=safe_defaults(st.session_state.get("elems_sel"), df[elem_col].unique()), key="elems_sel")
+    labs_sel  = st.multiselect("Labs", df[lab_col].dropna().unique(), key="labs_sel")
+    elems_sel = st.multiselect("Elements", df[elem_col].dropna().unique(), key="elems_sel")
     types_sel=None
     if type_col!="None":
-        types_sel = st.multiselect("Blank types", df[type_col].dropna().unique(), default=safe_defaults(st.session_state.get("types_sel"), df[type_col].unique()), key="types_sel")
+        types_sel = st.multiselect("Blank types", df[type_col].dropna().unique(), key="types_sel")
 
 cat_filters,num_filters=[],[]
 with st.sidebar.expander("🎛️ Categorical filters"):
