@@ -10,7 +10,7 @@ if sys.version_info[0] < 3:
     reload(sys)
     sys.setdefaultencoding("utf-8")
 
-@st.cache
+@st.cache_data
 def do_nothing():
     pass
 

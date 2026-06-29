@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from pyrpa.UI import common
 
-@st.cache
+@st.cache_data
 def do_nothing():
     pass
 
