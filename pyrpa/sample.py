@@ -10,7 +10,6 @@ import numpy as np
 import pyrpa.plotting as pl
 import matplotlib.pyplot as plt
 import scipy.spatial as spatial
-from multiprocessing.pool import ThreadPool as Pool
 from sklearn.neighbors import NearestNeighbors
 import scipy.stats as st
 from IPython.display import display, HTML
@@ -57,21 +56,21 @@ class Sample(object):
 
         # if a domain fields is specified we can report a stats for each grade field and each domain
         # if not report the stats on the entire block model
-        self.stats = pd.DataFrame()
+        stats_rows = []
         for gradef in self.gradefields:
             if self.domainf is not None:
                 for dom in self.data[domainf].unique():
                     filt = (self.data[domainf]==dom)
-                    self.stats = self.stats.append(ut.weighted_stats(self.data.loc[filt, gradef],
-                                                                     weights=self.weights[filt],
-                                                                     gradef=gradef, dom=dom))
+                    stats_rows.append(ut.weighted_stats(self.data.loc[filt, gradef],
+                                                        weights=self.weights[filt],
+                                                        gradef=gradef, dom=dom))
                 sortfields = ["Domain", "Variable"]
             else:
-                self.stats = self.stats.append(ut.weighted_stats(self.data[gradef],
-                                                                 weights=self.weights,
-                                                                 gradef=gradef))
+                stats_rows.append(ut.weighted_stats(self.data[gradef],
+                                                    weights=self.weights,
+                                                    gradef=gradef))
                 sortfields = ["Variable"]
-        self.stats = self.stats.sort_values(by=sortfields).reset_index(drop=True)
+        self.stats = pd.concat(stats_rows, ignore_index=True).sort_values(by=sortfields).reset_index(drop=True)
 
         # to use for comparing data sets
 
@@ -99,7 +98,7 @@ class Sample(object):
         assert self.holeid is not None, "No holeid specified"
         df_out= None
         if by_domain:
-            df_out = pd.DataFrame()
+            frames = []
             assert self.domainf is not None, "Domain field is not specified"
             self.data['sort_order'] = np.arange(len(self.data))
             for dom in self.data[self.domainf].unique():
@@ -107,23 +106,24 @@ class Sample(object):
                 df = self.data[self.data[self.domainf]==dom].copy()
                 spacing = np.zeros(len(df)) + 999.
                 if len(df) > 1:
+                    xyz = np.array(df[self.xyzfields])
+                    holeids = np.array(df[self.holeid])
                     for i in range(len(df)):
-                        dists, idx = ut.nearest_neighbour_idx2(np.array([df[self.xyzfields].iloc[i]]),
-                                                               np.array(df[self.xyzfields]))
-                        spacing[i]=ut.get_dist_nearest_dholes(df[self.holeid].iloc[i],
-                                                                         np.array(df[self.holeid]), dists, idx,
+                        dists, idx = ut.nearest_neighbour_idx2(np.array([xyz[i]]), xyz)
+                        spacing[i]=ut.get_dist_nearest_dholes(holeids[i], holeids, dists, idx,
                                                                          nearest_neighbours)
                 df['_spacing'] = spacing
-                df_out = df_out.append(df).reset_index(drop=True)
+                frames.append(df)
+            df_out = pd.concat(frames).reset_index(drop=True)
             df_out = df_out.sort_values(by=['sort_order']).reset_index(drop=True)
         else:
             df = self.data.copy()
             spacing = np.zeros(len(df)) + 999.
+            xyz = np.array(df[self.xyzfields])
+            holeids = np.array(df[self.holeid])
             for i in range(len(df)):
-                dists, idx = ut.nearest_neighbour_idx2(np.array([df[self.xyzfields].iloc[i]]),
-                                                       np.array(df[self.xyzfields]))
-                spacing[i] = ut.get_dist_nearest_dholes(df[self.holeid].iloc[i],
-                                                                   np.array(df[self.holeid]), dists, idx,
+                dists, idx = ut.nearest_neighbour_idx2(np.array([xyz[i]]), xyz)
+                spacing[i] = ut.get_dist_nearest_dholes(holeids[i], holeids, dists, idx,
                                                                    nearest_neighbours)
             df['_spacing'] = spacing
             df_out = df
@@ -162,13 +162,13 @@ class Sample(object):
 
         # first calculate the drillhole spacing in a temp df
 
-        df = pd.DataFrame(self.data.copy())
+        df = self.data.copy()
         spacing = np.zeros(len(df)) + 999.
+        xyz = np.array(df[self.xyzfields])
+        holeids = np.array(df[self.holeid])
         for i in range(len(df)):
-            dists, idx = ut.nearest_neighbour_idx2(np.array([df[self.xyzfields].iloc[i]]),
-                                                   np.array(df[self.xyzfields]))
-            spacing[i] = ut.get_dist_nearest_dholes(df[self.holeid].iloc[i],
-                                                    np.array(df[self.holeid]), dists, idx,
+            dists, idx = ut.nearest_neighbour_idx2(np.array([xyz[i]]), xyz)
+            spacing[i] = ut.get_dist_nearest_dholes(holeids[i], holeids, dists, idx,
                                                     nearest_neighbours)
 
         dhlist = []
@@ -180,11 +180,11 @@ class Sample(object):
                 dhlist.append(df[self.holeid].iloc[min_idx])
                 df = df[df[self.holeid] != dhlist[-1]].copy()
                 spacing = np.zeros(len(df)) + 999.
+                xyz = np.array(df[self.xyzfields])
+                holeids = np.array(df[self.holeid])
                 for i in range(len(df)):
-                    dists, idx = ut.nearest_neighbour_idx2(np.array([df[self.xyzfields].iloc[i]]),
-                                                           np.array(df[self.xyzfields]))
-                    spacing[i] = ut.get_dist_nearest_dholes(df[self.holeid].iloc[i],
-                                                            np.array(df[self.holeid]), dists, idx,
+                    dists, idx = ut.nearest_neighbour_idx2(np.array([xyz[i]]), xyz)
+                    spacing[i] = ut.get_dist_nearest_dholes(holeids[i], holeids, dists, idx,
                                                             nearest_neighbours)
 
         outfield = '_spacing_lt_' + str(target_spacing)
@@ -226,7 +226,7 @@ class Sample(object):
                     dists = spatial.distance_matrix(dftemp[self.xyzfields], dftemp[self.xyzfields])
                     dists[hx == hy] = 9999999.
                     dists[np.isnan(dists)] = 100000.
-                    dists = dists + np.random.rand() / 10000.
+                    dists = dists + np.random.rand(*dists.shape) / 10000.
                     closest = dists.min()
                     mindix = np.unravel_index(dists.argmin(), dists.shape)
                     dhlist.append(hx[mindix])
@@ -268,13 +268,13 @@ class Sample(object):
         else:
             sf = uncappedfield
 
-        means = self.data.groupby([self.domainf], as_index=False, sort=True)[cappedfield, uncappedfield].mean()
+        means = self.data.groupby([self.domainf], as_index=False, sort=True)[[cappedfield, uncappedfield]].mean()
         means = means.sort_values(by=[sf], ascending=False)
         means['_x'] = np.arange(len(means)) + 1
 
         self.data = pd.merge(self.data, means[[self.domainf, '_x']], on=self.domainf)
         x = self.data['_x'].copy()
-        self.data = self.data.drop('_x', 1)
+        self.data = self.data.drop(columns='_x')
 
         plt.figure(figsize=figsize)
         plt.plot(x, self.data[uncappedfield], 'or')
@@ -330,7 +330,7 @@ class Sample(object):
 
         stats1 = ut.weighted_stats(z=x1, weights=w, gradef=self.gradefield_paired)
         stats2 = ut.weighted_stats(z=x2, weights=w, gradef='_paired_' + self.gradefield_paired)
-        stats1 = stats1.append(stats2)
+        stats1 = pd.concat([stats1, stats2])
 
         pl.cdf_plot_compare(x1=np.sort(x1), x2=np.sort(x2),
                                         frequencies1=y,

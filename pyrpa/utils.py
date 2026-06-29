@@ -32,8 +32,8 @@ def check_data(data):
         else:
             df = pd.read_csv(data)
         return df;
-    except:
-        raise "Data object is not a pandas.DataFrame"
+    except Exception as e:
+        raise TypeError("Data object is not a pandas.DataFrame") from e
 
 def weighted_cdf(weights):
     '''
@@ -95,13 +95,6 @@ def weighted_stats(z, weights, gradef=None, dom=None):
         stats['CV'] = -99.
 
     return stats;
-
-def nearest_neighbour_idx(xyz1, xyz2):
-    dists = 0
-    for i in range(3):
-        dists += (xyz1[i]-xyz2[:, i])**2
-    sort_idx = np.argsort(dists)
-    return dists**0.5, np.arange(len(xyz2))[sort_idx];
 
 def nearest_neighbour_idx2(xyz1, xyz2):
 

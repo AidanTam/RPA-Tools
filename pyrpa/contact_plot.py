@@ -2,10 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 import matplotlib.pyplot as plt
-import warnings
 from matplotlib.backends.backend_pdf import PdfPages
-
-warnings.simplefilter("ignore")
 
 
 def knn(head, tail):
@@ -27,13 +24,10 @@ class contact_plot(object):
         distances, indices = knn(x[self.xyzf], y[self.xyzf])
         if isprimary:
             distances *= -1
-        df = x[[self.rockf, self.gradef]]
+        df = x[[self.rockf, self.gradef]].copy()
         df['Contact'] = str(self.rock1) + "-" + str(self.rock2)
         df['Distance'] = distances
-        try:
-            self.pairs = self.pairs.append(df).reset_index(drop=True)
-        except:
-            raise 'This is an internal proces'
+        self.pairs = pd.concat([self.pairs, df], ignore_index=True)
 
     def fit(self, rock1, rock2):
 

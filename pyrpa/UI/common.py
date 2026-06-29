@@ -10,12 +10,11 @@ field_type=None
 def show_header():
     path = os.path.dirname(__file__)
     logo = Image.open(path + "\\" + 'page_header.png')
-    st.image(logo, caption='', use_column_width=True)
+    st.image(logo, caption='', use_container_width=True)
 
 def extend_list(list1, list2):
 
-    for item in list2:
-        list1.append(item)
+    list1.extend(list2)
 
     return list1;
 
@@ -63,8 +62,40 @@ def load_file(infile):
     elif ".csv" in infile:
         df = pd.read_csv(infile)
     else:
-        raise "Invalid file type"
+        raise ValueError("Invalid file type")
     return df;
+
+def upload_or_select(extensions, display_text="Data File (.csv or .dm)", key="file", sidebar=True, initial_value=None):
+    """Show a drag-and-drop file uploader then a directory-scan selectbox as fallback.
+    Upload takes priority. Returns (filename_str, DataFrame) or (None, None)."""
+    widget = st.sidebar if sidebar else st
+
+    uploaded = widget.file_uploader(
+        display_text,
+        type=[e.lstrip('.') for e in extensions],
+        key=key + "_upload",
+    )
+    if uploaded is not None:
+        name = uploaded.name
+        if '.dm' in name:
+            import tempfile
+            tmp_path = os.path.join(tempfile.gettempdir(), name)
+            with open(tmp_path, 'wb') as f:
+                f.write(uploaded.getvalue())
+            df = pyrpa.io.read_datamine(tmp_path)
+        else:
+            df = pd.read_csv(uploaded)
+        return name, df
+
+    infiles = get_file_list(extensions)
+    if initial_value is not None and initial_value in infiles:
+        idx = infiles.index(initial_value)
+    else:
+        idx = 0
+    infile = widget.selectbox("...or select from folder", infiles, index=idx, key=key + "_select")
+    if infile != "--None--":
+        return infile, load_file(infile)
+    return None, None
 
 def get_header(df):
     '''
@@ -149,24 +180,6 @@ def guess_field(header, type=None):
         fields = None
 
     return fields;
-
-def guess_bhid(header):
-
-    def test_case(option):
-        if option in header:
-            return option, 1;
-        else:
-            return None, 0;
-
-    options  = ['BHID', 'HOLEID', 'holeid']
-
-    holeid = None
-    found = 0
-    for option in options:
-        if found !=1:
-            holeid, found = test_case(option)
-
-    return holeid;
 
 def selectbox(selection, options, display_text, key, guessheader=False, field_type=None):
 

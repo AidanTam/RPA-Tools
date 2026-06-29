@@ -1,171 +1,125 @@
 import sys
+import os
+import runpy
 from importlib import reload
 import streamlit as st
-import os
-import numpy as np
-import glob
-import pandas as pd
-import pyrpa
-import subprocess
 from PIL import Image
-import matplotlib.pyplot as plt
 
 if sys.version_info[0] < 3:
     reload(sys)
     sys.setdefaultencoding("utf-8")
 
-cwd = os.getcwd()
-
-@st.cache
-def do_nothing():
-    pass
-
-
-# path = os.getcwd()
 path = os.path.dirname(__file__)
 
-def streamlit_run(module):
-    subprocess.check_call(["powershell.exe", "streamlit run " + path + "\\" + module], shell=True)
+st.set_page_config(page_title="SLR Celest RPA Tools", layout="wide")
 
-logo = Image.open(path + "\\" + 'logo-slr-2018.png')
+# Suppress set_page_config in child tool modules — it can only be called once
+import streamlit as _st
+_st.set_page_config = lambda *args, **kwargs: None
+
+logo = Image.open(os.path.join(path, 'logo-slr-2018.png'))
 st.sidebar.image(logo, caption='')
-# st.sidebar.title("# Product Name")
-logo = Image.open(path + "\\" + 'Celest.png')
+logo = Image.open(os.path.join(path, 'Celest.png'))
 st.sidebar.image(logo, caption='')
 
-prog_options = ["Home", "Plotting Tools", "Sample Tools", "Block Model Tools", "Geostats Tools", "QA/QC","Data Validation"]
-prog_radio = st.sidebar.radio("", prog_options)
+SECTIONS = ["Home", "Plotting Tools", "Sample Tools", "Block Model Tools", "Geostats Tools", "QA/QC", "Data Validation"]
+section = st.sidebar.radio("", SECTIONS)
 
-if prog_radio == prog_options[0]:
-    '''
-    # SLR Celest Resource Estimation Tools
-    
-    A collection of miraculous tools for resource geologists.
-    '''
-    st.markdown('Version 1.0.2')
-    image = Image.open(path + "\\" + 'gibraltar_0857.jpg')
-    st.image(image, caption='', use_column_width=True)
+if 'active_tool' not in st.session_state:
+    st.session_state.active_tool = None
+if 'active_section' not in st.session_state:
+    st.session_state.active_section = section
 
-if prog_radio == prog_options[1]:
-    st.markdown("## Plotting Tools:")
-    # if st.button("Filter File"):
-    #     streamlit_run(module="filter_file_ui.py")
-    if st.button("Box Plot"):
-        streamlit_run(module="box_plot_ui.py")
-    if st.button("Scatter Plot"):
-        streamlit_run(module="scatter_plot_ui.py")
-    if st.button("Width Plot"):
-        streamlit_run(module="width_plot_ui.py")
+# Reset tool when the user switches sections
+if section != st.session_state.active_section:
+    st.session_state.active_tool = None
+    st.session_state.active_section = section
 
 
-if prog_radio == prog_options[2]:
-    st.markdown("## Sample Tools:")
+def tool_button(label, module):
+    if st.button(label, use_container_width=True):
+        st.session_state.active_tool = module
+        st.rerun()
 
 
-    if st.button("Statistics"):
-        streamlit_run(module="sample_stats_ui.py")
-
-    # if st.button("Capping Analysis"):
-    #     streamlit_run(module="capping_ui.py")
-
-    if st.button("Capping Analysis"):
-        streamlit_run(module="capping_ui_v2.py")
-
-    if st.button("Uncapped vs Capped Plot"):
-        streamlit_run(module="capped_vs_uncapped_plot_ui.py")
-
-    if st.button("Contact Analysis"):
-        streamlit_run(module="contact_plot_ui.py")
-
-    if st.button("Calculate DDH Spacing"):
-        streamlit_run(module="ddh_spacing_ui.py")
-
-    if st.button("Thin DDH Spacing"):
-        streamlit_run(module="thin_ddh_spacing_ui.py")
-
-if prog_radio == prog_options[3]:
-    '''
-    # Block Model Tools:
-    
-    Collection of Block Model Tools
-    
-    '''
-
-    if st.checkbox("Reporting"):
-
-        if st.button("Resource Report"):
-            pass
-
-        if st.button("Statistics"):
-            pass
-
-        if st.button("GT Curve"):
-            pass
-
-    if st.checkbox("Block Model Validation"):
-
-        if st.button("Convert Rotations (between conventions)"):
-            streamlit_run(module="convert_rotation_ui.py")
-
-        if st.button("Compare Means"):
-            pass
-
-        if st.button("Swath Plot"):
-            pass
-
-        if st.button("Global Change of Support Check"):
-            pass
-
-    if st.checkbox("Post-Processing"):
-
-        if st.button("Reblock"):
-            pass
-
-        if st.button("Label Connected Blocks"):
-            pass
-
-        if st.button("Categorical Smoothing"):
-            pass
-
-        if st.button("Smart Dilution"):
-            pass
+def run_active_tool():
+    col_back, _ = st.columns([1, 5])
+    with col_back:
+        if st.button("← Back"):
+            st.session_state.active_tool = None
+            st.rerun()
+    st.divider()
+    module_path = os.path.join(path, st.session_state.active_tool)
+    runpy.run_path(module_path, run_name='__main__')
 
 
-if prog_radio == prog_options[4]:
-    st.markdown("## Geostats Tools:")
+# ── Home ─────────────────────────────────────────────────────────────────────
+if section == "Home":
+    st.session_state.active_tool = None
+    st.title("SLR Celest Resource Estimation Tools")
+    st.markdown("A collection of miraculous tools for resource geologists.")
+    st.markdown("**Version 1.0.2**")
+    st.markdown("Select a tool from the sidebar to get started.")
+    image = Image.open(os.path.join(path, 'gibraltar_0857.jpg'))
+    st.image(image, caption='', use_container_width=True)
 
-    if st.button("Gammabar Plot"):
-        streamlit_run(module="gammabar_ui.py")
+# ── Plotting Tools ────────────────────────────────────────────────────────────
+elif section == "Plotting Tools":
+    if st.session_state.active_tool:
+        run_active_tool()
+    else:
+        st.markdown("## Plotting Tools")
+        tool_button("Box Plot",        "box_plot_ui.py")
+        tool_button("Scatter Plot",    "scatter_plot_ui.py")
+        tool_button("Width Plot",      "width_plot_ui.py")
 
-if prog_radio == prog_options[5]:
-    st.markdown("## QA/QC Tools:")
+# ── Sample Tools ──────────────────────────────────────────────────────────────
+elif section == "Sample Tools":
+    if st.session_state.active_tool:
+        run_active_tool()
+    else:
+        st.markdown("## Sample Tools")
+        tool_button("Statistics",             "sample_stats_ui.py")
+        tool_button("Capping Analysis",       "capping_ui_v2.py")
+        tool_button("Uncapped vs Capped Plot","capped_vs_uncapped_plot_ui.py")
+        tool_button("Contact Analysis",       "contact_plot_ui.py")
+        tool_button("Calculate DDH Spacing",  "ddh_spacing_ui.py")
+        tool_button("Thin DDH Spacing",       "thin_ddh_spacing_ui.py")
 
-    if st.button("Standards"):
-        pass
+# ── Block Model Tools ─────────────────────────────────────────────────────────
+elif section == "Block Model Tools":
+    if st.session_state.active_tool:
+        run_active_tool()
+    else:
+        st.markdown("## Block Model Tools")
+        if st.checkbox("Block Model Validation"):
+            tool_button("Convert Rotations (between conventions)", "convert_rotation_ui.py")
 
-    if st.button("Blanks"):
-        pass
+# ── Geostats Tools ────────────────────────────────────────────────────────────
+elif section == "Geostats Tools":
+    if st.session_state.active_tool:
+        run_active_tool()
+    else:
+        st.markdown("## Geostats Tools")
+        tool_button("Gammabar Plot", "gammabar_ui.py")
 
-    if st.button("Duplicates"):
-        pass
+# ── QA/QC ─────────────────────────────────────────────────────────────────────
+elif section == "QA/QC":
+    if st.session_state.active_tool:
+        run_active_tool()
+    else:
+        st.markdown("## QA/QC Tools")
+        tool_button("Standards",    "CRMs_ui.py")
+        tool_button("Blanks",       "Blanks_ui.py")
+        tool_button("Duplicates",   "Duplicates_ui_nuggets.py")
+        tool_button("Check Assays", "Check_assay_ui.py")
+        tool_button("Z-Score",      "Z_Score_ui.py")
 
-
-
-if prog_radio == prog_options[6]:
-    st.markdown("## Data Validation ")
-
-    if st.button("Data Verification tool"):
-        streamlit_run(module="data_verification_ui.py")
-        pass
-
-    if st.button("Drill Hole Comparison"):
-        streamlit_run(module="Get_Nearest_ui.py")
-        pass
-
-
-
-
-
-
-
-
+# ── Data Validation ───────────────────────────────────────────────────────────
+elif section == "Data Validation":
+    if st.session_state.active_tool:
+        run_active_tool()
+    else:
+        st.markdown("## Data Validation")
+        tool_button("Data Verification Tool", "data_verification_ui.py")
+        tool_button("Drill Hole Comparison",  "Get_Nearest_ui.py")

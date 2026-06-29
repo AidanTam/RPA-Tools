@@ -14,18 +14,10 @@ from matplotlib import rcParams
 from matplotlib import rc
 from pyrpa import metal_at_risk
 import sklearn.neighbors as nn
-import warnings
 from pyrpa import plotting
 import pyrpa.utils as ut
 import pyrpa.changeofsupport as cs
 
-
-warnings.simplefilter("ignore")
-
-def cap_grades(data, capping_level):
-    capped_data = np.array(data.copy())
-    capped_data[capped_data > capping_level] = capping_level
-    return capped_data
 
 def _prop_metal(x, weights, thresholds):
 
@@ -89,7 +81,7 @@ class capping(object):
     def cutting_curve(self, target_average=None, figsize=(15, 10)):
 
         x = np.array(self.samples.data[self.gradefield])
-        avg_grade = [np.average(cap_grades(x, val), weights=self.weights) for val in x]
+        avg_grade = [np.average(ut.cap_grades(x, val), weights=self.weights) for val in x]
 
         fig, ax = plt.subplots(figsize=figsize)
         fig.patch.set_facecolor(color="white")
@@ -120,12 +112,12 @@ class capping(object):
 
         caps.append(np.round(np.max(self.samples.data[self.gradefield]), 2))
         columns = ['Percent Metal Loss','Min', 'Max', 'Average Grade', 'CV', 'Capping Percentile', 'Number of Caps']
-        df = pd.DataFrame()
+        frames = []
         grades = np.array(self.samples.data[self.gradefield].copy())
         totmetal = np.sum(grades * self.weights)
 
         for cap in caps:
-            capped_grades = cap_grades(self.samples.data[self.gradefield], cap)
+            capped_grades = ut.cap_grades(self.samples.data[self.gradefield], cap)
             metal = np.sum(capped_grades * self.weights)
             perc_mloss = abs(np.round((metal / totmetal - 1.) * 100., self.decimal_places))
             ming = np.round(np.min(capped_grades), self.decimal_places)
@@ -144,7 +136,8 @@ class capping(object):
                 dftemp[str(i) + "%"] = np.round(tmetal / metal * 100., self.decimal_places)
                 decmet += dftemp.loc[str(cap) + " Cap", str(i) + "%"]
             dftemp["90%-100%"] = decmet
-            df = df.append(dftemp)
+            frames.append(dftemp)
+        df = pd.concat(frames)
         df = df.transpose()
         df = df.rename(columns={str(np.max(self.samples.data[self.gradefield])) + " Cap": "Uncapped"})
 
@@ -364,7 +357,7 @@ class capping(object):
 
     def metal_map(self, xyzfields=None, plane='XY', unit='m', scale=10000.):
 
-        pass
+        raise NotImplementedError("metal_map is not yet implemented")
 
     def simulation(self, resource_tonnes=10000., production_rate=1000., number_of_samples=100000, plot=True, figsize=(15, 10)):
 
@@ -470,7 +463,7 @@ class capping(object):
                 cap = grades[-1]
                 gf_capped = grades_cor.copy()
                 while cap / np.average(gf_capped[filt], weights=weights[filt]) > cap_grade_factor:
-                    gf_capped = cap_grades(gf_capped, cap)
+                    gf_capped = ut.cap_grades(gf_capped, cap)
                     cap -= cap_granularity
                 caps.append(cap)
             plt.plot(cutoffs, caps, 'o-')

@@ -28,11 +28,11 @@ def mean_comparison(blockmodel, samples, blk_benchmarkf=None, smp_benchmarkf=Non
     blk_avgs = blockmodel.stats.pivot(index="Domain", columns="Variable", values="Average")
     for col in blk_avgs.columns:
         blk_avgs['blk - ' + col] = blk_avgs[col]
-        blk_avgs = blk_avgs.drop([col], 1)
+        blk_avgs = blk_avgs.drop(columns=[col])
     smp_avgs = samples.stats.pivot(index="Domain", columns="Variable", values="Average")
     for col in smp_avgs.columns:
         smp_avgs['smp - ' + col] = smp_avgs[col]
-        smp_avgs = smp_avgs.drop([col], 1)
+        smp_avgs = smp_avgs.drop(columns=[col])
 
     avgs = smp_avgs
     avgs[blk_avgs.columns]=blk_avgs
@@ -66,40 +66,6 @@ def mean_comparison(blockmodel, samples, blk_benchmarkf=None, smp_benchmarkf=Non
     plt.ylabel('Average')
 
     return avgs;
-
-class swathplot(object):
-
-    def __init__(self, blocks, samples):
-
-        self.sample = samples
-        self.blocks = blocks
-
-    def fit(self, direction='X', spacing=50., rotation=0.0):
-
-        if direction  == 'X':
-            dir = 0
-        elif direction == 'Y':
-            dir = 1
-        else:
-            dir = 2
-
-        smp = self.samples.data[self.xyzfields[dir], self.samples.gradefields]
-        smp['SWATH'] = np.round(smp[0, :] / spacing, 0) * spacing
-
-        blk = self.blocks.data[self.xyzfields[dir], self.blocks.gradefields, self.blocks.tonnes]
-        blk['SWATH'] = np.round(blk[0, :] / spacing, 0) * spacing
-
-        smp = smp.groupby(by='SWATH')[self.samples.gradefields].mean().reset_index()
-        smp_count = smp.groupby(by='SWATH')[self.samples.gradefields[0]].count().reset_index()
-        smp['SAMPLE COUNT'] = smp_count[self.samples.data.gradefields[0]]
-
-        for gf in self.sample.gradefields:
-            smp = smp.rename({gf: gf + "_smp"})
-
-        for gf in self.blocks.gradefields:
-            blk[gf] *= self.blocks.tonnes
-
-        blk = blk.groupby(by='SWATH')[self.blocks.gradefields].sum().reset_index()
 
 
 

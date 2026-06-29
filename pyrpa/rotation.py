@@ -37,7 +37,6 @@ def rotate_xyz(xyz, a1=0., a2=0., a3=0., origin=None):
     :param a3:
     :return:
     '''
-    print(np.shape(xyz))
     if origin is None:
         origin = [np.average(xyz[0, :]), np.average(xyz[1, :]), np.average(xyz[2, :])]
 
@@ -51,7 +50,6 @@ def rotate_xyz(xyz, a1=0., a2=0., a3=0., origin=None):
     xyz_rot = np.zeros((len(xyz_trans), 3))
 
     for i in range(len(xyz_trans[0,:])):
-        print(xyz_trans[:, i])
         xyz_rot[i] = np.matmul(xyz_trans[i, :], rotmat)
 
     # xyz_rot = xyz_trans*rotmat[:, :, np.newaxis]

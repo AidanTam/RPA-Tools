@@ -1,5 +1,6 @@
 import streamlit as st
 import sys
+import os
 from importlib import reload
 import pandas as pd
 from pyrpa.UI import common
@@ -9,19 +10,22 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.io as pio
-from docxtpl import DocxTemplate, InlineImage
-from docx.shared import Mm 
+try:
+    from docxtpl import DocxTemplate, InlineImage
+    from docx.shared import Mm
+except ImportError:
+    DocxTemplate = InlineImage = Mm = None
 # import openai
 import io
 import tempfile
 
 # from st_aggrid import AgGrid
-@st.cache
-def do_nothing():
-    pass
 
-
-doc = DocxTemplate(r'dC:\pyrpa-master\pyrpa-master\pyrpa\UI\SLR amazing report.docx')
+try:
+    _report_template = os.path.join(os.path.dirname(__file__), 'SLR amazing report.docx')
+    doc = DocxTemplate(_report_template) if DocxTemplate and os.path.exists(_report_template) else None
+except Exception:
+    doc = None
 if 'AI_Intorduction' not in st.session_state:
     st.session_state['AI_Intorduction'] = ""
 if 'piechartimage' not in st.session_state:
@@ -76,16 +80,13 @@ xyzfields = common.strip_dflist(_temp_dict.loc['XYZ Fields', 'Parameter'])
 domains = common.strip_dflist(_temp_dict.loc['Domains', 'Parameter'])
 
 _temp_dict.loc['Description', 'Parameter'] = st.sidebar.text_input("Description", _temp_dict.loc['Description', 'Parameter'])
-infiles = common.get_file_list([".csv", ".dm"])
-_temp_dict.loc['Filename', 'Parameter'] = common.selectbox(selection=_temp_dict.loc['Filename', 'Parameter'],
-                                                                options=infiles,
-                                                                display_text="Data File (.csv or .dm)",
-                                                                key='Filename')
+_infile, df = common.upload_or_select([".csv", ".dm"], initial_value=_temp_dict.loc['Filename', 'Parameter'], key='Filename')
+if _infile is not None:
+    _temp_dict.loc['Filename', 'Parameter'] = _infile
 
 # big outer if is checking to see if filename is defined
 
-if _temp_dict.loc['Filename', 'Parameter'] != "--None--":
-    df = common.load_file(_temp_dict.loc['Filename', 'Parameter'])
+if df is not None:
     header = common.get_header(df)
 
     _temp_dict.loc['Grade Field', 'Parameter'] = common.selectbox(selection=_temp_dict.loc['Grade Field', 'Parameter'],

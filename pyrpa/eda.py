@@ -102,6 +102,6 @@ def nnblk_declustering(samples, blocks):
 
     samples.data._dcweight /= np.sum(samples.data._dcweight)
     samples.data._dcweight *= float(len(samples.data))
-    blocks.data.drop(['_ijk', '_tonnes'], 1, inplace=True)
+    blocks.data.drop(columns=['_ijk', '_tonnes'], inplace=True)
 
 
