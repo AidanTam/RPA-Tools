@@ -1,7 +1,8 @@
 import sys
+import os
+import runpy
 from importlib import reload
 import streamlit as st
-import os
 from PIL import Image
 
 if sys.version_info[0] < 3:
@@ -12,15 +13,113 @@ path = os.path.dirname(__file__)
 
 st.set_page_config(page_title="SLR Celest RPA Tools", layout="wide")
 
+# Suppress set_page_config in child tool modules — it can only be called once
+import streamlit as _st
+_st.set_page_config = lambda *args, **kwargs: None
+
 logo = Image.open(os.path.join(path, 'logo-slr-2018.png'))
 st.sidebar.image(logo, caption='')
 logo = Image.open(os.path.join(path, 'Celest.png'))
 st.sidebar.image(logo, caption='')
 
-st.title("SLR Celest Resource Estimation Tools")
-st.markdown("A collection of miraculous tools for resource geologists.")
-st.markdown("**Version 1.0.2**")
-st.markdown("Select a tool from the sidebar to get started.")
+SECTIONS = ["Home", "Plotting Tools", "Sample Tools", "Block Model Tools", "Geostats Tools", "QA/QC", "Data Validation"]
+section = st.sidebar.radio("", SECTIONS)
 
-image = Image.open(os.path.join(path, 'gibraltar_0857.jpg'))
-st.image(image, caption='', use_container_width=True)
+if 'active_tool' not in st.session_state:
+    st.session_state.active_tool = None
+if 'active_section' not in st.session_state:
+    st.session_state.active_section = section
+
+# Reset tool when the user switches sections
+if section != st.session_state.active_section:
+    st.session_state.active_tool = None
+    st.session_state.active_section = section
+
+
+def tool_button(label, module):
+    if st.button(label, use_container_width=True):
+        st.session_state.active_tool = module
+        st.rerun()
+
+
+def run_active_tool():
+    col_back, _ = st.columns([1, 5])
+    with col_back:
+        if st.button("← Back"):
+            st.session_state.active_tool = None
+            st.rerun()
+    st.divider()
+    module_path = os.path.join(path, st.session_state.active_tool)
+    runpy.run_path(module_path, run_name='__main__')
+
+
+# ── Home ─────────────────────────────────────────────────────────────────────
+if section == "Home":
+    st.session_state.active_tool = None
+    st.title("SLR Celest Resource Estimation Tools")
+    st.markdown("A collection of miraculous tools for resource geologists.")
+    st.markdown("**Version 1.0.2**")
+    st.markdown("Select a tool from the sidebar to get started.")
+    image = Image.open(os.path.join(path, 'gibraltar_0857.jpg'))
+    st.image(image, caption='', use_container_width=True)
+
+# ── Plotting Tools ────────────────────────────────────────────────────────────
+elif section == "Plotting Tools":
+    if st.session_state.active_tool:
+        run_active_tool()
+    else:
+        st.markdown("## Plotting Tools")
+        tool_button("Box Plot",        "box_plot_ui.py")
+        tool_button("Scatter Plot",    "scatter_plot_ui.py")
+        tool_button("Width Plot",      "width_plot_ui.py")
+
+# ── Sample Tools ──────────────────────────────────────────────────────────────
+elif section == "Sample Tools":
+    if st.session_state.active_tool:
+        run_active_tool()
+    else:
+        st.markdown("## Sample Tools")
+        tool_button("Statistics",             "sample_stats_ui.py")
+        tool_button("Capping Analysis",       "capping_ui_v2.py")
+        tool_button("Uncapped vs Capped Plot","capped_vs_uncapped_plot_ui.py")
+        tool_button("Contact Analysis",       "contact_plot_ui.py")
+        tool_button("Calculate DDH Spacing",  "ddh_spacing_ui.py")
+        tool_button("Thin DDH Spacing",       "thin_ddh_spacing_ui.py")
+
+# ── Block Model Tools ─────────────────────────────────────────────────────────
+elif section == "Block Model Tools":
+    if st.session_state.active_tool:
+        run_active_tool()
+    else:
+        st.markdown("## Block Model Tools")
+        if st.checkbox("Block Model Validation"):
+            tool_button("Convert Rotations (between conventions)", "convert_rotation_ui.py")
+
+# ── Geostats Tools ────────────────────────────────────────────────────────────
+elif section == "Geostats Tools":
+    if st.session_state.active_tool:
+        run_active_tool()
+    else:
+        st.markdown("## Geostats Tools")
+        tool_button("Gammabar Plot", "gammabar_ui.py")
+
+# ── QA/QC ─────────────────────────────────────────────────────────────────────
+elif section == "QA/QC":
+    if st.session_state.active_tool:
+        run_active_tool()
+    else:
+        st.markdown("## QA/QC Tools")
+        tool_button("Standards",    "CRMs_ui.py")
+        tool_button("Blanks",       "Blanks_ui.py")
+        tool_button("Duplicates",   "Duplicates_ui_nuggets.py")
+        tool_button("Check Assays", "Check_assay_ui.py")
+        tool_button("Z-Score",      "Z_Score_ui.py")
+
+# ── Data Validation ───────────────────────────────────────────────────────────
+elif section == "Data Validation":
+    if st.session_state.active_tool:
+        run_active_tool()
+    else:
+        st.markdown("## Data Validation")
+        tool_button("Data Verification Tool", "data_verification_ui.py")
+        tool_button("Drill Hole Comparison",  "Get_Nearest_ui.py")
