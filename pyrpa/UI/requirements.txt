@@ -10,4 +10,5 @@ plotly==5.8.2
 pyrpa==0.0.5
 python_docx==0.8.11
 streamlit==1.23.1
-transforms3d==0.3.1
+transforms3d==0.4.2
+pygwalker==0.5.0.1
