@@ -22,7 +22,17 @@ pip install -r pyrpa/UI/requirements.txt
 python -m streamlit run pyrpa/UI/rpa_tools.py
 ```
 
-Opens at `http://localhost:8501` by default.
+Opens at `http://localhost:8501` by default. Stop the server with `Ctrl+C` in the terminal it's running in.
+
+### Troubleshooting
+
+- **Code changes not showing up**: editing files in `pyrpa/` (not the entry-point `rpa_tools.py`) won't hot-reload — Python caches imported modules. Fully stop the server (`Ctrl+C`, or kill any process still bound to port 8501) and relaunch.
+- **Port already in use**: another Streamlit instance may still be running. Find and stop it, or launch on a different port with `python -m streamlit run pyrpa/UI/rpa_tools.py --server.port 8502`.
+- **Missing packages** (e.g. `pygwalker`, `transforms3d`): re-run `pip install -r pyrpa/UI/requirements.txt`.
+
+### Hosted Version
+
+This app can also be deployed to [Streamlit Community Cloud](https://streamlit.io/cloud) for browser access with no local install — see [Deployment](#deployment) below.
 
 ---
 
@@ -96,6 +106,21 @@ All tools that accept data files support two input methods:
 | transforms3d | 0.4.2 |
 | pygwalker | 0.5.0.1 |
 | pyrpa | 0.0.5 |
+
+---
+
+## Deployment
+
+To make the app accessible from a browser with no local install, deploy it on [Streamlit Community Cloud](https://share.streamlit.io) (free):
+
+1. Push the repo to GitHub (already done — `AidanTam/RPA-Tools`).
+2. Sign in at [share.streamlit.io](https://share.streamlit.io) with your GitHub account and authorize Streamlit's GitHub app.
+3. Click **New app**, select this repo and the `main` branch, and set the main file path to `pyrpa/UI/rpa_tools.py`.
+4. Under **Advanced settings**, set the Python version to match local development if needed, and add any secrets (API keys, etc.) under **Secrets** — none are currently required.
+5. Click **Deploy**. The app builds from `pyrpa/UI/requirements.txt` and is live at a `*.streamlit.app` URL within a few minutes.
+6. Future pushes to `main` redeploy automatically.
+
+> **Note:** Vercel does not support Streamlit — it only runs serverless functions and static sites, not the persistent WebSocket server Streamlit requires. Streamlit Community Cloud, Render, Railway, or a VM are the viable hosts.
 
 ---
 

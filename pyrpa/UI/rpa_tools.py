@@ -17,6 +17,28 @@ st.set_page_config(page_title="SLR Celest RPA Tools", layout="wide")
 import streamlit as _st
 _st.set_page_config = lambda *args, **kwargs: None
 
+# ── Passphrase gate ─────────────────────────────────────────────────────────
+# Internal-tool access control. Set APP_PASSWORD in Streamlit secrets (or the
+# APP_PASSWORD env var) to override the default; falls back to "SLR123".
+try:
+    APP_PASSWORD = st.secrets["APP_PASSWORD"]
+except Exception:
+    APP_PASSWORD = os.environ.get("APP_PASSWORD", "SLR123")
+
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.title("SLR Celest RPA Tools")
+    passphrase = st.text_input("Enter passphrase to continue", type="password")
+    if passphrase:
+        if passphrase == APP_PASSWORD:
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("Incorrect passphrase.")
+    st.stop()
+
 logo = Image.open(os.path.join(path, 'logo-slr-2018.png'))
 st.sidebar.image(logo, caption='')
 logo = Image.open(os.path.join(path, 'Celest.png'))
