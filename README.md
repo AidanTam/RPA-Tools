@@ -4,6 +4,12 @@ A Streamlit web application providing a suite of resource geology tools for samp
 
 **Version 1.0.2**
 
+### 🌐 Live App
+
+**[rpa-tools-lgtdu6uyh9sykzia3u3trw.streamlit.app](https://rpa-tools-lgtdu6uyh9sykzia3u3trw.streamlit.app)**
+
+Hosted on Streamlit Community Cloud — no install required. Access is protected by a passphrase. The app auto-updates whenever changes are pushed to the `main` branch.
+
 ---
 
 ## Getting Started
@@ -111,7 +117,7 @@ All tools that accept data files support two input methods:
 
 ## Deployment
 
-To make the app accessible from a browser with no local install, deploy it on [Streamlit Community Cloud](https://share.streamlit.io) (free):
+This app is deployed at **[rpa-tools-lgtdu6uyh9sykzia3u3trw.streamlit.app](https://rpa-tools-lgtdu6uyh9sykzia3u3trw.streamlit.app)** on [Streamlit Community Cloud](https://share.streamlit.io) (free):
 
 1. Push the repo to GitHub (already done — `AidanTam/RPA-Tools`).
 2. Sign in at [share.streamlit.io](https://share.streamlit.io) with your GitHub account and authorize Streamlit's GitHub app.
