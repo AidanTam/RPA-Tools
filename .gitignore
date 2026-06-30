@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.tmp.*
+gammabar.out
+gammabar.par
+_temp_cap_dict
