@@ -11,6 +11,14 @@ if sys.version_info[0] < 3:
 
 path = os.path.dirname(__file__)
 
+# Ensure the repo root is importable regardless of working directory/mount
+# layout (e.g. Streamlit Cloud doesn't put it on sys.path the way running
+# locally from the repo root does), so `import pyrpa` resolves to the local
+# package rather than failing or shadowing an unrelated PyPI package.
+_repo_root = os.path.abspath(os.path.join(path, '..', '..'))
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
+
 st.set_page_config(page_title="SLR Celest RPA Tools", layout="wide")
 
 # Suppress set_page_config in child tool modules — it can only be called once
