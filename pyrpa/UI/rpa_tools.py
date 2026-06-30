@@ -1,6 +1,8 @@
 import sys
 import os
 import runpy
+import io
+import zipfile
 from importlib import reload
 import streamlit as st
 from PIL import Image
@@ -51,6 +53,34 @@ logo = Image.open(os.path.join(path, 'logo-slr-2018.png'))
 st.sidebar.image(logo, caption='')
 logo = Image.open(os.path.join(path, 'Celest.png'))
 st.sidebar.image(logo, caption='')
+
+
+@st.cache_data(show_spinner=False)
+def _build_repo_zip():
+    """Zip up the currently-running codebase so users can keep a local
+    copy that won't change if the hosted version is later updated/broken."""
+    exclude_dirs = {'.git', '__pycache__', '.streamlit'}
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(_repo_root):
+            dirs[:] = [d for d in dirs if d not in exclude_dirs]
+            for f in files:
+                if f.endswith('.pyc'):
+                    continue
+                full = os.path.join(root, f)
+                zf.write(full, os.path.relpath(full, _repo_root))
+    return buf.getvalue()
+
+
+st.sidebar.download_button(
+    "⬇️ Download this version",
+    data=_build_repo_zip(),
+    file_name="RPA-Tools.zip",
+    mime="application/zip",
+    use_container_width=True,
+    help="Download the codebase exactly as it's running right now, so you have a local copy to fall back on.",
+)
+st.sidebar.divider()
 
 SECTIONS = ["Home", "Plotting Tools", "Sample Tools", "Block Model Tools", "Geostats Tools", "QA/QC", "Data Validation"]
 section = st.sidebar.radio("", SECTIONS)
