@@ -496,33 +496,43 @@ if df is None:
     st.info("Upload a CSV/Excel file or load a config to begin.")
     st.stop()
 
+_checkassay_field_map = {
+    "prim_lab_col": "primary_lab", "sec_lab_col": "secondary_lab", "elem_col": "element",
+    "or_col": "original_value", "dup_col": "duplicate_value", "unit_col": "unit",
+    "type_col": "type", "date_col": "date",
+}
+df = common.offer_wide_reshape(df, key="checkassay")
+common.sync_column_mapping(df, key="checkassay", field_map=_checkassay_field_map)
+
 # ───────── column mapping ─────────
+_guess = common.auto_map_columns(df.columns, ["primary_lab","secondary_lab","element",
+                                               "original_value","duplicate_value","unit","type","date"])
 with st.sidebar.expander("🗺️ Column mapping", True):
     prim_lab_col = st.selectbox("Primary‑lab column", df.columns,
-                                index=idx_of(st.session_state.get("prim_lab_col", df.columns[0]), df.columns),
+                                index=idx_of(st.session_state.get("prim_lab_col", _guess["primary_lab"] or df.columns[0]), df.columns),
                                 key="prim_lab_col")
     sec_lab_col  = st.selectbox("Secondary‑lab column", df.columns,
-                                index=idx_of(st.session_state.get("sec_lab_col", df.columns[1]), df.columns),
+                                index=idx_of(st.session_state.get("sec_lab_col", _guess["secondary_lab"] or df.columns[1]), df.columns),
                                 key="sec_lab_col")
     elem_col     = st.selectbox("Element column", df.columns,
-                                index=idx_of(st.session_state.get("elem_col", df.columns[2]), df.columns),
+                                index=idx_of(st.session_state.get("elem_col", _guess["element"] or df.columns[2]), df.columns),
                                 key="elem_col")
     or_col       = st.selectbox("Original‑assay column", df.columns,
-                                index=idx_of(st.session_state.get("or_col", df.columns[3]), df.columns),
+                                index=idx_of(st.session_state.get("or_col", _guess["original_value"] or df.columns[3]), df.columns),
                                 key="or_col")
     dup_col      = st.selectbox("Duplicate‑assay column", df.columns,
-                                index=idx_of(st.session_state.get("dup_col", df.columns[4]), df.columns),
+                                index=idx_of(st.session_state.get("dup_col", _guess["duplicate_value"] or df.columns[4]), df.columns),
                                 key="dup_col")
     unit_col     = st.selectbox("Unit column", ["None"] + list(df.columns),
-                                index=idx_of(st.session_state.get("unit_col", "None"),
+                                index=idx_of(st.session_state.get("unit_col", _guess["unit"] or "None"),
                                              ["None"] + list(df.columns)),
                                 key="unit_col")
     type_col     = st.selectbox("Duplicate‑type column", ["None"] + list(df.columns),
-                                index=idx_of(st.session_state.get("type_col", "None"),
+                                index=idx_of(st.session_state.get("type_col", _guess["type"] or "None"),
                                              ["None"] + list(df.columns)),
                                 key="type_col")
     date_col     = st.selectbox("Date column", ["None"] + list(df.columns),
-                                index=idx_of(st.session_state.get("date_col", "None"),
+                                index=idx_of(st.session_state.get("date_col", _guess["date"] or "None"),
                                              ["None"] + list(df.columns)),
                                 key="date_col")
 

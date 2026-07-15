@@ -670,25 +670,33 @@ elif st.session_state.get("csv_path") and os.path.exists(st.session_state["csv_p
 if df is None:
     st.info("Upload CSV or load config."); st.stop()
 
+_dups_field_map = {
+    "lab_col": "lab", "dup_col": "type", "element_col": "element", "unit_col": "unit",
+    "orig_val_col": "original_value", "dup_val_col": "duplicate_value",
+}
+df = common.offer_wide_reshape(df, key="dups")
+common.sync_column_mapping(df, key="dups", field_map=_dups_field_map)
+
 # ───────── 3) column mapping ─────────
+_guess = common.auto_map_columns(df.columns, ["lab","type","element","unit","original_value","duplicate_value"])
 with st.sidebar.expander("🗺️ Column mapping", True):
     lab_col      = st.selectbox("Lab column", df.columns,
-                                index=idx_of(st.session_state.get("lab_col", df.columns[0]), list(df.columns)),
+                                index=idx_of(st.session_state.get("lab_col", _guess["lab"] or df.columns[0]), list(df.columns)),
                                 key="lab_col")
     dup_col      = st.selectbox("Duplicate‑type column", df.columns,
-                                index=idx_of(st.session_state.get("dup_col", df.columns[0]), list(df.columns)),
+                                index=idx_of(st.session_state.get("dup_col", _guess["type"] or df.columns[0]), list(df.columns)),
                                 key="dup_col")
     element_col  = st.selectbox("Element column", df.columns,
-                                index=idx_of(st.session_state.get("element_col", df.columns[0]), list(df.columns)),
+                                index=idx_of(st.session_state.get("element_col", _guess["element"] or df.columns[0]), list(df.columns)),
                                 key="element_col")
     unit_col     = st.selectbox("Unit column", df.columns,
-                                index=idx_of(st.session_state.get("unit_col", df.columns[0]), list(df.columns)),
+                                index=idx_of(st.session_state.get("unit_col", _guess["unit"] or df.columns[0]), list(df.columns)),
                                 key="unit_col")
     orig_val_col = st.selectbox("Original value column", df.columns,
-                                index=idx_of(st.session_state.get("orig_val_col", df.columns[0]), list(df.columns)),
+                                index=idx_of(st.session_state.get("orig_val_col", _guess["original_value"] or df.columns[0]), list(df.columns)),
                                 key="orig_val_col")
     dup_val_col  = st.selectbox("Duplicate value column", df.columns,
-                                index=idx_of(st.session_state.get("dup_val_col", df.columns[0]), list(df.columns)),
+                                index=idx_of(st.session_state.get("dup_val_col", _guess["duplicate_value"] or df.columns[0]), list(df.columns)),
                                 key="dup_val_col")
 
 # ───────── 4) filters ─────────

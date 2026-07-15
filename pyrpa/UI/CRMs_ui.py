@@ -695,12 +695,9 @@ def deserialize_session_state(state_dict):
             deserialized_state[key] = value
     return deserialized_state
 
-def auto_select(col_list, target):
-    """Return index of a column whose name matches *target* (case-insensitive)."""
-    for i, col in enumerate(col_list):
-        if col.lower() == target.lower():
-            return i
-    return 0
+def _idx_or(col, col_list, fallback=0):
+    """Return the index of *col* in col_list, or fallback if col is None/absent."""
+    return col_list.index(col) if col in col_list else fallback
 
 # ------------------------------------------------------------------
 #                        APP LAYOUT
@@ -717,15 +714,23 @@ if saved_progress_file is not None:
 
 file = st.sidebar.file_uploader("Choose a data file (CSV or Excel)", ["csv","xlsx","xls"])
 if file is not None:
+    _crms_field_map = {
+        "date_col": "date", "grade_col": "value", "CRM_col": "crm", "elementcolumn": "element",
+        "expected_val_col": "expected", "source_col": "project",
+        "optional_group_field_1": "lab", "unit_col_sel": "unit",
+    }
     data     = common.read_data_file(file)
+    data     = common.offer_wide_reshape(data, key="crms")
+    common.sync_column_mapping(data, key="crms", field_map=_crms_field_map)
     columns  = list(data.columns)                # for auto-complete / filters
 
     # ---------------------- SIDEBAR SETTINGS ----------------------
-    date_idx      = auto_select(columns, "Date")
-    grade_idx     = auto_select(columns, "Grade")
-    crm_idx       = auto_select(columns, "CRM")
-    elements_idx  = auto_select(columns, "Element")
-    expected_idx  = auto_select(columns, "Expected Value")
+    _guess = common.auto_map_columns(columns, ["date","value","crm","element","expected","project","lab","unit"])
+    date_idx      = _idx_or(_guess["date"], columns)
+    grade_idx     = _idx_or(_guess["value"], columns)
+    crm_idx       = _idx_or(_guess["crm"], columns)
+    elements_idx  = _idx_or(_guess["element"], columns)
+    expected_idx  = _idx_or(_guess["expected"], columns)
 
     date_col      = st.sidebar.selectbox('Date Column', columns, index=date_idx, key='date_col')
     data[date_col] = pd.to_datetime(data[date_col])
@@ -734,7 +739,7 @@ if file is not None:
     CRM_col       = st.sidebar.selectbox('CRM Column',   columns, index=crm_idx,  key='CRM_col')
     elementcolumn = st.sidebar.selectbox('Element Column', columns, index=elements_idx, key='elementcolumn')
     expected_val_col = st.sidebar.selectbox('Expected Value Column', columns, index=expected_idx, key='expected_val_col')
-    project_idx   = auto_select(columns, "Project")
+    project_idx   = _idx_or(_guess["project"], columns)
     source_col    = st.sidebar.selectbox('Project', columns, index=project_idx, key='source_col')
 
     # convert grades to float (with quick feedback)
@@ -746,7 +751,7 @@ if file is not None:
     elements = st.multiselect('Select Element', data[elementcolumn].unique(), key='element')
 
     # ---------------- OPTIONAL GROUPING FIELDS (unchanged) -------
-    lab_idx = auto_select(['None'] + columns, "Lab")
+    lab_idx = _idx_or(_guess["lab"] or "None", ['None'] + columns)
     optional_group_field_1 = st.sidebar.selectbox('Lab',
                                                   ['None'] + columns,
                                                   index=lab_idx,
@@ -761,7 +766,7 @@ if file is not None:
     # ---------------- UNIT (trackable, auto-detected from header) -----------------
     # Units can vary across methods/standards, so read them from a data column when
     # available rather than from a fixed predefined list. Falls back to free text.
-    unit_idx = auto_select(['None'] + columns, "Unit")
+    unit_idx = _idx_or(_guess["unit"] or "None", ['None'] + columns)
     unit_col_sel = st.sidebar.selectbox('Unit Column', ['None'] + columns,
                                         index=unit_idx, key='unit_col_sel')
     custom_unit = st.sidebar.text_input("Custom Unit (used if no Unit column selected)",

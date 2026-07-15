@@ -361,15 +361,23 @@ elif st.session_state.get("csv_path") and os.path.exists(st.session_state["csv_p
     df = common.read_data_file(st.session_state["csv_path"])
 if df is None: st.info("Upload a CSV/Excel file or load config."); st.stop()
 
+_blanks_field_map = {
+    "lab_col": "lab", "elem_col": "element", "val_col": "value", "date_col": "date",
+    "unit_col": "unit", "lod_col": "lod", "type_col": "type",
+}
+df = common.offer_wide_reshape(df, key="blanks")
+common.sync_column_mapping(df, key="blanks", field_map=_blanks_field_map)
+
 # ───────── column mapping ─────────
+_guess = common.auto_map_columns(df.columns, ["lab","element","value","date","unit","lod","type"])
 with st.sidebar.expander("🗺️ Column mapping", True):
-    lab_col  = st.selectbox("Lab column", df.columns,  index=idx_of(st.session_state.get("lab_col",df.columns[0]), df.columns), key="lab_col")
-    elem_col = st.selectbox("Element column", df.columns, index=idx_of(st.session_state.get("elem_col",df.columns[0]), df.columns), key="elem_col")
-    val_col  = st.selectbox("Value column", df.columns,  index=idx_of(st.session_state.get("val_col",df.columns[0]), df.columns), key="val_col")
-    date_col = st.selectbox("Date column", ["None"]+list(df.columns), index=idx_of(st.session_state.get("date_col","None"), ["None"]+list(df.columns)), key="date_col")
-    unit_col = st.selectbox("Unit column", ["None"]+list(df.columns), index=idx_of(st.session_state.get("unit_col","None"), ["None"]+list(df.columns)), key="unit_col")
-    lod_col  = st.selectbox("LOD/DL column", ["None"]+list(df.columns), index=idx_of(st.session_state.get("lod_col","None"), ["None"]+list(df.columns)), key="lod_col")
-    type_col = st.selectbox("Blank‑type column", ["None"]+list(df.columns), index=idx_of(st.session_state.get("type_col","None"), ["None"]+list(df.columns)), key="type_col")
+    lab_col  = st.selectbox("Lab column", df.columns,  index=idx_of(st.session_state.get("lab_col", _guess["lab"] or df.columns[0]), df.columns), key="lab_col")
+    elem_col = st.selectbox("Element column", df.columns, index=idx_of(st.session_state.get("elem_col", _guess["element"] or df.columns[0]), df.columns), key="elem_col")
+    val_col  = st.selectbox("Value column", df.columns,  index=idx_of(st.session_state.get("val_col", _guess["value"] or df.columns[0]), df.columns), key="val_col")
+    date_col = st.selectbox("Date column", ["None"]+list(df.columns), index=idx_of(st.session_state.get("date_col", _guess["date"] or "None"), ["None"]+list(df.columns)), key="date_col")
+    unit_col = st.selectbox("Unit column", ["None"]+list(df.columns), index=idx_of(st.session_state.get("unit_col", _guess["unit"] or "None"), ["None"]+list(df.columns)), key="unit_col")
+    lod_col  = st.selectbox("LOD/DL column", ["None"]+list(df.columns), index=idx_of(st.session_state.get("lod_col", _guess["lod"] or "None"), ["None"]+list(df.columns)), key="lod_col")
+    type_col = st.selectbox("Blank‑type column", ["None"]+list(df.columns), index=idx_of(st.session_state.get("type_col", _guess["type"] or "None"), ["None"]+list(df.columns)), key="type_col")
 
 # Default the Labs/Elements/Types selections to "all" for the currently-mapped column.
 # Seeding session_state before the widget is created is the reliable way to set a

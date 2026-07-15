@@ -153,6 +153,8 @@ RPA-Tools/
 
 | Module | Improvement |
 |--------|-------------|
+| All QA/QC tools | **Automatic column mapping**: on upload, each tool now guesses which column fills each field (Lab, Element, Value, Date, Unit, etc.) by name, tolerant of case/spacing/synonyms — "Analyte" → Element, "Assay_Result" → Value, "SampleDate" → Date, and so on. Re-guesses whenever the uploaded file's columns change, so a manual pick you've made survives reruns of the same file but a genuinely new file gets fresh guesses instead of stale ones. Falls back to the old first-column behaviour when nothing matches. |
+| All QA/QC tools | **Wide-format detection**: if a file has one column-block per element (e.g. `Au_EV`, `Au_SD`, `Au_or_ppm`, `Ag_EV`, `Ag_SD`, ...) instead of a single Element/Value column pair, a sidebar prompt offers to reshape it into the long format the tools expect, with a choice of which element groups to include. Column mapping then fills in automatically against the reshaped data. |
 | All QA/QC tools | New **Aspect ratio** control in the 📐 Style options sets the chart width-to-height ratio — presets (16:9, 3:2, 4:3, 1:1, 2:1, 3:1) plus a `Custom...` option taking a free-text `W:H` value. Leave it on `Default` to keep each tool's original proportions. |
 | Blanks, Duplicates | PowerPoint export no longer stretches charts into a fixed 8×4.5 in box — the slide image now follows the chart's own aspect ratio |
 | Blanks | Y-axis limits can now be adjusted for blank values in the plot (Custom Y-limits in the Style options) |

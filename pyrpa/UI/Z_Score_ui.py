@@ -366,28 +366,36 @@ elif st.session_state.get("csv_path") and os.path.exists(st.session_state["csv_p
 if df is None:
     st.info("Upload CSV or load config to begin."); st.stop()
 
+_zscore_field_map = {
+    "elem_col": "element", "crm_col": "crm", "val_col": "value", "exp_col": "expected",
+    "sd_col": "sd", "date_col": "date", "comp_col": "company",
+}
+df = common.offer_wide_reshape(df, key="zscore")
+common.sync_column_mapping(df, key="zscore", field_map=_zscore_field_map)
+
 # ───────── column mapping ─────────
+_guess = common.auto_map_columns(df.columns, ["element","crm","value","expected","sd","date","company"])
 with st.sidebar.expander("🗺️ Column mapping", True):
     elem_col = st.selectbox("Element column", df.columns,
-                             index=idx_of(st.session_state.get("elem_col", df.columns[0]), df.columns),
+                             index=idx_of(st.session_state.get("elem_col", _guess["element"] or df.columns[0]), df.columns),
                              key="elem_col")
     crm_col  = st.selectbox("CRM column", df.columns,
-                             index=idx_of(st.session_state.get("crm_col", df.columns[1]), df.columns),
+                             index=idx_of(st.session_state.get("crm_col", _guess["crm"] or df.columns[1]), df.columns),
                              key="crm_col")
     val_col  = st.selectbox("Value column", df.columns,
-                             index=idx_of(st.session_state.get("val_col", df.columns[2]), df.columns),
+                             index=idx_of(st.session_state.get("val_col", _guess["value"] or df.columns[2]), df.columns),
                              key="val_col")
     exp_col  = st.selectbox("Expected value column", df.columns,
-                             index=idx_of(st.session_state.get("exp_col", df.columns[3]), df.columns),
+                             index=idx_of(st.session_state.get("exp_col", _guess["expected"] or df.columns[3]), df.columns),
                              key="exp_col")
     sd_col   = st.selectbox("SD column", df.columns,
-                             index=idx_of(st.session_state.get("sd_col", df.columns[4]), df.columns),
+                             index=idx_of(st.session_state.get("sd_col", _guess["sd"] or df.columns[4]), df.columns),
                              key="sd_col")
     date_col = st.selectbox("Date column", df.columns,
-                             index=idx_of(st.session_state.get("date_col", df.columns[5]), df.columns),
+                             index=idx_of(st.session_state.get("date_col", _guess["date"] or df.columns[5]), df.columns),
                              key="date_col")
     comp_col = st.selectbox("Company column", df.columns,
-                             index=idx_of(st.session_state.get("comp_col", df.columns[6]), df.columns),
+                             index=idx_of(st.session_state.get("comp_col", _guess["company"] or df.columns[6]), df.columns),
                              key="comp_col")
 
 # ───────── filters ─────────

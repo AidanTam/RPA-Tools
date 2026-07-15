@@ -1,5 +1,6 @@
 import glob
 import math
+import re
 import pyrpa
 import pandas as pd
 import streamlit as st
@@ -74,6 +75,270 @@ def aspect_ratio_input(default_size, key, container=None, label="Aspect ratio"):
 
     width = float(default_size[0])
     return (width, width / ratio)
+
+# ── Column auto-mapping ──────────────────────────────────────────────────────
+# Name-based guessing of which uploaded column corresponds to which field the
+# QA/QC tools need (Lab, Element, Value, Date, ...), plus detection/reshaping of
+# "wide" per-element exports (Au_EV, Au_or_ppm, Ag_EV, Ag_or_ppm, ...) into the
+# long/tidy format (one Element column, one Value column) the tools expect.
+
+_TOKEN_RE = re.compile(r'[^0-9a-zA-Z]+')
+
+def _tokens(name):
+    """Lowercase alnum tokens from a name, splitting on underscores/spaces/
+    punctuation and camelCase boundaries (so 'SampleDate' and 'sample_date'
+    both tokenize to {'sample', 'date'})."""
+    s = re.sub(r'(?<=[a-z0-9])(?=[A-Z])', '_', str(name))
+    return frozenset(t for t in _TOKEN_RE.split(s.lower()) if t)
+
+def _normalize(name):
+    return re.sub(r'[^0-9a-z]', '', str(name).lower())
+
+def _match_names_to_keys(names, synonyms_by_key, keys):
+    """Core matcher shared by auto_map_columns() and the wide-reshape suffix-role
+    detector: best-effort 1:1 assignment of `names` to `keys`, scored by how well
+    each name matches each key's synonym list. A name and a key are each used at
+    most once (highest-scoring matches win first). Returns {key: name_or_None}."""
+    names = list(names)
+    name_tokens = {n: _tokens(n) for n in names}
+    name_norm = {n: _normalize(n) for n in names}
+
+    candidates = []  # (score, key, name)
+    for key in keys:
+        for syn in synonyms_by_key.get(key, []):
+            syn_tokens = _tokens(syn)
+            if not syn_tokens:
+                continue
+            syn_norm = _normalize(syn)
+            for n in names:
+                if name_norm[n] == syn_norm:
+                    candidates.append((100, key, n))
+                elif len(syn_tokens) >= 2 and syn_tokens <= name_tokens[n]:
+                    candidates.append((90, key, n))
+                elif len(syn_tokens) == 1 and syn_tokens <= name_tokens[n]:
+                    candidates.append((60, key, n))
+
+    candidates.sort(key=lambda t: -t[0])
+    result = {k: None for k in keys}
+    used_names, used_keys = set(), set()
+    for score, key, n in candidates:
+        if key in used_keys or n in used_names:
+            continue
+        result[key] = n
+        used_keys.add(key)
+        used_names.add(n)
+    return result
+
+# Synonyms are matched as whole tokens (underscore/space/case-insensitive), not
+# substrings, so e.g. "sd" never matches inside "grade" or "date".
+FIELD_SYNONYMS = {
+    "lab": ["lab", "laboratory", "lab name", "assay lab", "test lab"],
+    "primary_lab": ["primary lab", "lab 1", "original lab"],
+    "secondary_lab": ["secondary lab", "lab 2", "check lab", "duplicate lab", "umpire lab"],
+    "element": ["element", "analyte", "elem"],
+    "value": ["value", "result", "grade", "assay value", "assay result", "reading"],
+    "original_value": ["original value", "original assay", "original", "primary value", "value"],
+    "duplicate_value": ["duplicate value", "duplicate assay", "duplicate", "dup value", "check value"],
+    "date": ["date", "sample date", "assay date", "batch date"],
+    "unit": ["unit", "units", "uom"],
+    "lod": ["lod", "dl", "detection limit", "lower detection limit"],
+    "type": ["type", "blank type", "control type", "sample type", "duplicate type"],
+    "crm": ["crm", "standard", "control", "standard name", "control type", "control name"],
+    "expected": ["expected value", "expected", "ev", "certified value", "certified"],
+    "sd": ["sd", "stdev", "std dev", "standard deviation"],
+    "project": ["project", "project name", "client", "source"],
+    "company": ["company", "client", "project"],
+}
+
+def auto_map_columns(columns, field_keys, extra_synonyms=None):
+    """Best-effort guess of which column in `columns` corresponds to each of
+    `field_keys` (see FIELD_SYNONYMS for the supported keys), by name only --
+    case/punctuation/spacing-insensitive, small synonym list per field. Returns
+    {field_key: column_name_or_None}. Never assigns the same column to two
+    fields. Pass extra_synonyms={field_key: [...]} to extend a field's list for
+    one call without touching the shared FIELD_SYNONYMS table.
+
+    Name matching alone can't help with "wide" exports where each element gets
+    its own column block (Au_EV, Ag_EV, ...) instead of a single Element/Value
+    pair -- see detect_wide_groups() / reshape_wide_to_long() for that case.
+    """
+    synonyms = dict(FIELD_SYNONYMS)
+    if extra_synonyms:
+        for k, v in extra_synonyms.items():
+            synonyms[k] = synonyms.get(k, []) + list(v)
+    return _match_names_to_keys(list(columns), synonyms, list(field_keys))
+
+def detect_wide_groups(columns, min_suffixes_per_group=2, min_groups=2, min_shared_suffixes=2):
+    """Detect repeated <PREFIX>_<SUFFIX> column blocks that suggest a wide,
+    one-column-block-per-element export (e.g. Au_EV, Au_SD, Au_or_ppm, Ag_EV,
+    Ag_SD, Ag_or_ppm) rather than the long/tidy layout the QA/QC tools expect
+    (a single Element column plus a single Value column).
+
+    Returns {prefix: {suffix_lower: column_name}} for prefixes that look like
+    genuine parallel groups, or {} if nothing qualifies (including plain tidy
+    data, which is the common case and should be a no-op).
+    """
+    groups = {}
+    for col in columns:
+        if '_' not in col:
+            continue
+        prefix, suffix = col.split('_', 1)
+        if not prefix or not suffix:
+            continue
+        groups.setdefault(prefix, {})[suffix.lower()] = col
+
+    groups = {p: s for p, s in groups.items() if len(s) >= min_suffixes_per_group}
+    if len(groups) < min_groups:
+        return {}
+
+    # Require real suffix overlap across groups (e.g. both Au_* and Ag_* have an
+    # "EV" and an "SD" column) -- otherwise these are just coincidentally
+    # underscore-named columns, not parallel per-element blocks.
+    suffix_sets = list(groups.values())
+    common = set(suffix_sets[0])
+    for s in suffix_sets[1:]:
+        common &= set(s)
+    if len(common) < min_shared_suffixes:
+        return {}
+
+    return groups
+
+# Suffix -> role synonyms used only inside a single detected wide-format group
+# (a handful of suffixes at a time), so shorter/looser synonyms are safe here in
+# a way they wouldn't be matching against a whole file's column names.
+_SUFFIX_ROLE_SYNONYMS = {
+    "value": ["or ppm", "or", "original", "value", "result", "grade", "assay", "reading",
+              "ppm", "pct", "percent", "ppb", "g t", "oz t"],
+    "duplicate_value": ["dp ppm", "dp", "duplicate", "dup", "check"],
+    "unit": ["unit", "units", "uom"],
+    "lod": ["dl", "lod", "detection limit"],
+    "expected": ["ev", "expected", "expected value", "certified"],
+    "sd": ["sd", "stdev", "std dev", "standard deviation"],
+}
+
+_LONG_COLUMN_NAMES = {
+    "value": "Value",
+    "duplicate_value": "Duplicate_Value",
+    "unit": "Unit",
+    "lod": "LOD",
+    "expected": "Expected",
+    "sd": "SD",
+}
+
+def reshape_wide_to_long(df, groups, element_col_name="Element"):
+    """Melt a wide per-element layout (as detected by detect_wide_groups) into
+    one row per sample-element: a single `element_col_name` column holding the
+    group prefix (e.g. "Au", "Ag") plus Value/Unit/LOD/Expected/SD/
+    Duplicate_Value columns, each pulled from whichever suffix in that group
+    best matches the role. Columns not claimed by any group are treated as
+    shared and repeated across every element's rows.
+    """
+    grouped_cols = {col for suffix_map in groups.values() for col in suffix_map.values()}
+    shared_cols = [c for c in df.columns if c not in grouped_cols]
+    roles = list(_LONG_COLUMN_NAMES.keys())
+
+    pieces = []
+    for prefix, suffix_map in groups.items():
+        role_to_suffix = _match_names_to_keys(list(suffix_map.keys()), _SUFFIX_ROLE_SYNONYMS, roles)
+        piece = df[shared_cols].copy()
+        piece[element_col_name] = prefix
+        for role, suffix in role_to_suffix.items():
+            if suffix is None:
+                continue
+            piece[_LONG_COLUMN_NAMES[role]] = df[suffix_map[suffix]]
+        pieces.append(piece)
+
+    return pd.concat(pieces, ignore_index=True) if pieces else df.copy()
+
+def offer_wide_reshape(df, key):
+    """If df looks like a wide, per-element export (see detect_wide_groups),
+    show a sidebar prompt offering to reshape it into the long format the
+    QA/QC tools expect, with a choice of which element groups to include.
+    Returns the reshaped dataframe once the user confirms, else the original
+    dataframe unchanged -- a no-op when no groups are detected, which is the
+    common case for already-tidy data.
+
+    `key` scopes the session_state used to remember the choice so it survives
+    reruns without re-melting on every script execution, and so switching
+    tools doesn't leak one tool's reshape choice into another's.
+
+    Callers should follow this with sync_column_mapping() -- reshaping
+    changes df.columns, and column-mapping selectboxes need that to notice
+    and re-guess (see sync_column_mapping's docstring for why).
+    """
+    groups = detect_wide_groups(df.columns)
+    if not groups:
+        return df
+
+    sel_key = key + "_wide_selected"
+    skip_key = key + "_wide_skip"
+
+    stored = st.session_state.get(sel_key)
+    if stored:
+        chosen = {p: groups[p] for p in stored if p in groups}
+        if chosen:
+            return reshape_wide_to_long(df, chosen)
+        del st.session_state[sel_key]  # stale choice from a different upload
+
+    if st.session_state.get(skip_key):
+        return df
+
+    with st.sidebar.expander("🔀 Wide-format data detected", expanded=True):
+        prefixes = sorted(groups.keys())
+        st.write(
+            f"Found {len(prefixes)} column group(s) that look like one block per "
+            f"element ({', '.join(prefixes)}) instead of a single Element/Value "
+            f"column pair. Reshape to long format so column mapping below can "
+            f"fill in automatically?"
+        )
+        selected = st.multiselect("Element groups to include", prefixes, default=prefixes,
+                                  key=key + "_wide_groups_pick")
+        col_a, col_b = st.columns(2)
+        if col_a.button("Reshape", key=key + "_wide_reshape_btn", disabled=not selected):
+            st.session_state[sel_key] = selected
+            st.rerun()
+        if col_b.button("Skip, map manually", key=key + "_wide_skip_btn"):
+            st.session_state[skip_key] = True
+            st.rerun()
+
+    return df
+
+def sync_column_mapping(df, key, field_map):
+    """Keep a tool's column-mapping selectboxes correct whenever the
+    uploaded data's columns change -- a fresh upload with different columns,
+    or a wide-format reshape via offer_wide_reshape(). Call this once, right
+    before creating the column-mapping selectboxes.
+
+    Detects a change via a fingerprint of df.columns stashed in session_state
+    (scoped by `key`); on change, re-guesses every mapped field with
+    auto_map_columns() and *writes* the result into session_state. A no-op
+    (besides updating the fingerprint) when columns haven't changed, so a
+    user's manual override of a mapping survives reruns of the same file.
+
+    This write is necessary, not just a nice-to-have: Streamlit selectboxes
+    don't re-validate an existing session_state value against a new options
+    list on their own, so a key already set to a now-invalid column (e.g.
+    "Au_Element" after a reshape drops that column) keeps displaying that
+    stale value indefinitely if merely removed rather than overwritten --
+    the same class of staleness documented for multiselect defaults
+    elsewhere in this file.
+
+    `field_map` maps each column-mapping session_state key to the
+    FIELD_SYNONYMS key it represents, e.g. {"lab_col": "lab", "elem_col":
+    "element", "val_col": "value", ...}.
+    """
+    fp_key = key + "_cols_fp"
+    fingerprint = tuple(df.columns)
+    if st.session_state.get(fp_key) == fingerprint:
+        return
+    st.session_state[fp_key] = fingerprint
+
+    guess = auto_map_columns(df.columns, list(set(field_map.values())))
+    for map_key, field_key in field_map.items():
+        if guess.get(field_key):
+            st.session_state[map_key] = guess[field_key]
+        else:
+            st.session_state.pop(map_key, None)
 
 def show_header():
     path = os.path.dirname(__file__)
