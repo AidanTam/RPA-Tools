@@ -442,6 +442,7 @@ with st.sidebar.expander("📐 Style"):
         y_axis_max = st.number_input("Y max", value=float(st.session_state.get("y_axis_max",1.0)), key="y_axis_max")
     else:
         y_axis_min = y_axis_max = None
+    fig_size   = common.aspect_ratio_input((10,4), key="blanks_aspect")
 
 # ───────── Run button ─────────
 if st.sidebar.button("🚀 Run"): st.session_state.run_plots=True
@@ -479,7 +480,7 @@ for el in elems_sel:
                 tick_key=safe_key("ticks", el, lab, typ)
                 tick_count= st.slider("Date ticks",1,50, st.session_state.get(tick_key,10), key=tick_key) if date_col!="None" else None
 
-                fig,ax=plt.subplots(figsize=(10,4))
+                fig,ax=plt.subplots(figsize=fig_size)
                 if date_col!="None":
                     x=sub[date_col]; min_dt,max_dt=x.min(),x.max()
                     tick_dates=pd.date_range(min_dt,max_dt,periods=tick_count) if min_dt!=max_dt else [min_dt]
@@ -503,7 +504,7 @@ for el in elems_sel:
                         transform=ax.transAxes,ha="right",va="top",bbox=dict(fc="white",alpha=.8))
                 ax.grid(False)
                 st.pyplot(fig)
-                ppt.slides.add_slide(ppt.slide_layouts[5]).shapes.add_picture(tmp_fig(fig),Inches(1),Inches(1),width=Inches(8),height=Inches(4.5))
+                ppt.slides.add_slide(ppt.slide_layouts[5]).shapes.add_picture(tmp_fig(fig),Inches(1),Inches(1),width=Inches(8))
 
             # summary_rows.append({"Lab":lab,"Element":el,"Type":typ_lbl,"Samples":total,"Fails":nfail,"Rate%":round(rate,2),"Limit":limit})
             # NEW block ─ copy‑paste this instead

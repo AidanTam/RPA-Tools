@@ -436,6 +436,7 @@ with st.sidebar.expander("📐 Style"):
                            step=1.0, key="zmax")
     if zmin >= zmax:
         st.warning("⚠️ Min Z must be **less** than Max Z")
+    fig_size = common.aspect_ratio_input((15, 6), key="zscore_aspect")
 
 # ───────── run trigger ─────────
 if st.sidebar.button("🚀 Run"): st.session_state.run_plots = True
@@ -478,7 +479,7 @@ for el in elems_sel:
     colors = (base_pal * ((len(crms) // len(base_pal)) + 1))[:len(crms)]
     crm_palette = dict(zip(crms, colors))
 
-    fig, ax = plt.subplots(figsize=(15, 6))
+    fig, ax = plt.subplots(figsize=fig_size)
 
     # control lines
     for y, lbl, col in ctrl_lines:

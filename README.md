@@ -153,6 +153,8 @@ RPA-Tools/
 
 | Module | Improvement |
 |--------|-------------|
+| All QA/QC tools | New **Aspect ratio** control in the 📐 Style options sets the chart width-to-height ratio — presets (16:9, 3:2, 4:3, 1:1, 2:1, 3:1) plus a `Custom...` option taking a free-text `W:H` value. Leave it on `Default` to keep each tool's original proportions. |
+| Blanks, Duplicates | PowerPoint export no longer stretches charts into a fixed 8×4.5 in box — the slide image now follows the chart's own aspect ratio |
 | Blanks | Y-axis limits can now be adjusted for blank values in the plot (Custom Y-limits in the Style options) |
 | Standards (CRMs) | Automatic detection of header columns (Date, Grade, CRM, Element, Expected Value, Project, Lab, Unit) |
 | Standards (CRMs) | Renamed fields: `Categorical column` → `Project`, `Optional Grouping Field 1` → `Lab` |

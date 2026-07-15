@@ -807,6 +807,7 @@ if file is not None:
     allstats  = []
     x_text_rotation = st.sidebar.number_input('X Axis text rotation', value=0, key='x_text_rotation')
     x_margin        = st.sidebar.number_input('X axis margin', value=0.00, step=0.01, key='x_margin')
+    fig_size        = common.aspect_ratio_input((15, 8), key='crm_aspect', container=st.sidebar)
 
     # ------------------------------------------------------------------
     #                      MAIN PLOTTING LOOP
@@ -1062,7 +1063,7 @@ if file is not None:
                         y_axis_min = data_subset[grade_col].min()
                         y_axis_max = data_subset[grade_col].max()
 
-                    fig, ax = plt.subplots(figsize=(15, 8), dpi=500)
+                    fig, ax = plt.subplots(figsize=fig_size, dpi=500)
                     ax.scatter(data_subset['Sequence'],
                                data_subset[grade_col],
                                label=f'{elem}',

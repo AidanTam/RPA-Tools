@@ -791,6 +791,7 @@ with st.sidebar.expander("📐 Style & Nugget"):
         x_max = st.number_input("X max", value=st.session_state.get("x_max", 0.0), key="x_max")
         y_min = st.number_input("Y min", value=st.session_state.get("y_min", 0.0), key="y_min")
         y_max = st.number_input("Y max", value=st.session_state.get("y_max", 0.0), key="y_max")
+    fig_size = common.aspect_ratio_input((14, 5), key="dups_aspect")
 
 # ───────── 6) element selection ─────────
 unique_elems = sorted(df[element_col].dropna().unique())
@@ -845,7 +846,7 @@ for el in sel_elems:
             lim_nug  = pct_nug  * 100 if nugget_on else None
 
             # -------- figure ----------
-            fig, ax = plt.subplots(1, 2, figsize=(14, 5))
+            fig, ax = plt.subplots(1, 2, figsize=fig_size)
 
             # HARD plot (no legend)
             srt = sub.sort_values("HARD")
@@ -911,7 +912,7 @@ for el in sel_elems:
 
             st.pyplot(fig)
             ppt.slides.add_slide(ppt.slide_layouts[5]).shapes.add_picture(
-                tmp_fig(fig), Inches(1), Inches(1), width=Inches(8), height=Inches(4.5)
+                tmp_fig(fig), Inches(1), Inches(1), width=Inches(8)
             )
 
             summary_rows.append({

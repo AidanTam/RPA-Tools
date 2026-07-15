@@ -572,6 +572,7 @@ with st.sidebar.expander("📐 Style"):
     point_col  = st.color_picker("Point colour", st.session_state.get("p_col", "#000000"), key="p_col")
     diag_col   = st.color_picker("1:1 line colour", st.session_state.get("diag_col", "#86A586"), key="diag_col")
     log_axes   = st.checkbox("Log scales", value=st.session_state.get("log_axes", True), key="log_axes")
+    fig_size   = common.aspect_ratio_input((13, 6), key="checkassay_aspect")
 
 # ───────── run trigger ─────────
 if st.sidebar.button("🚀 Run"): st.session_state.run_plots = True
@@ -614,7 +615,7 @@ for el in elems_sel:
                 # Q-Q percentiles
                 perc = np.arange(1, 101); xp = np.percentile(x, perc); yp = np.percentile(y, perc)
 
-                fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(13, 6))
+                fig, (ax0, ax1) = plt.subplots(1, 2, figsize=fig_size)
 
                 # Q‑Q
                 ax0.scatter(xp, yp, s=size_pts2, c=point_col, edgecolors="none", alpha=0.7)

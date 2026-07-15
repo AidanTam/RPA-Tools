@@ -1,4 +1,5 @@
 import glob
+import math
 import pyrpa
 import pandas as pd
 import streamlit as st
@@ -6,6 +7,73 @@ import os
 from PIL import Image
 
 field_type=None
+
+# Width-to-height ratios offered by aspect_ratio_input(). "Default" keeps each
+# tool's original figure size; "Custom..." reveals a free-text field.
+ASPECT_PRESETS = {
+    "Default": None,
+    "16:9 (widescreen)": 16 / 9,
+    "3:2": 3 / 2,
+    "4:3": 4 / 3,
+    "1:1 (square)": 1.0,
+    "2:1": 2.0,
+    "3:1 (wide)": 3.0,
+    "Custom...": "custom",
+}
+
+def parse_aspect_ratio(text):
+    """Parse a 'W:H' string (or a bare number, treated as W:1) into a width/height
+    float. Returns None if the text isn't a usable ratio, so callers can fall back."""
+    text = str(text).strip()
+    if not text:
+        return None
+
+    sep = ":" if ":" in text else ("/" if "/" in text else None)
+    try:
+        if sep is not None:
+            w_str, h_str = text.split(sep, 1)
+            w, h = float(w_str), float(h_str)
+        else:
+            w, h = float(text), 1.0
+    except ValueError:
+        return None
+
+    if not (math.isfinite(w) and math.isfinite(h)) or w <= 0 or h <= 0:
+        return None
+
+    return w / h
+
+def aspect_ratio_input(default_size, key, container=None, label="Aspect ratio"):
+    """Aspect-ratio picker returning a matplotlib figsize (width, height) in inches.
+
+    default_size is the tool's original figsize, returned unchanged while the picker
+    sits on "Default" so existing charts keep their current proportions. Any other
+    choice holds the default width and derives the height from the ratio.
+
+    Pass container=st.sidebar to place the widgets in the sidebar directly; leave it
+    as None inside a `with st.sidebar.expander(...)` block so they land in the expander.
+    """
+    widget = container if container is not None else st
+
+    choice = widget.selectbox(label, list(ASPECT_PRESETS.keys()), index=0, key=key)
+    spec = ASPECT_PRESETS[choice]
+
+    if spec is None:
+        return tuple(default_size)
+
+    if spec == "custom":
+        raw = widget.text_input("Custom ratio (W:H)",
+                                value=st.session_state.get(key + "_custom", "16:9"),
+                                key=key + "_custom")
+        ratio = parse_aspect_ratio(raw)
+        if ratio is None:
+            widget.warning("Enter a ratio like 16:9 - using the default size for now.")
+            return tuple(default_size)
+    else:
+        ratio = spec
+
+    width = float(default_size[0])
+    return (width, width / ratio)
 
 def show_header():
     path = os.path.dirname(__file__)
