@@ -19,7 +19,7 @@ Hosted on Streamlit Community Cloud — no install required. Access is protected
 ```bash
 git clone https://github.com/AidanTam/RPA-Tools.git
 cd RPA-Tools
-pip install -r pyrpa/UI/requirements.txt
+pip install -r requirements.txt
 ```
 
 ### Running the App
@@ -34,7 +34,7 @@ Opens at `http://localhost:8501` by default. Stop the server with `Ctrl+C` in th
 
 - **Code changes not showing up**: editing files in `pyrpa/` (not the entry-point `rpa_tools.py`) won't hot-reload — Python caches imported modules. Fully stop the server (`Ctrl+C`, or kill any process still bound to port 8501) and relaunch.
 - **Port already in use**: another Streamlit instance may still be running. Find and stop it, or launch on a different port with `python -m streamlit run pyrpa/UI/rpa_tools.py --server.port 8502`.
-- **Missing packages** (e.g. `pygwalker`, `transforms3d`): re-run `pip install -r pyrpa/UI/requirements.txt`.
+- **Missing packages** (e.g. `pygwalker`, `transforms3d`): re-run `pip install -r requirements.txt`.
 
 ### Hosted Version
 
@@ -123,7 +123,7 @@ This app is deployed at **[rpa-tools-lgtdu6uyh9sykzia3u3trw.streamlit.app](https
 2. Sign in at [share.streamlit.io](https://share.streamlit.io) with your GitHub account and authorize Streamlit's GitHub app.
 3. Click **New app**, select this repo and the `main` branch, and set the main file path to `pyrpa/UI/rpa_tools.py`.
 4. Under **Advanced settings**, set the Python version to match local development if needed, and add any secrets (API keys, etc.) under **Secrets** — none are currently required.
-5. Click **Deploy**. The app builds from `pyrpa/UI/requirements.txt` and is live at a `*.streamlit.app` URL within a few minutes.
+5. Click **Deploy**. The app builds from `requirements.txt` in the repo root and is live at a `*.streamlit.app` URL within a few minutes.
 6. Future pushes to `main` redeploy automatically.
 
 > **Note:** Vercel does not support Streamlit — it only runs serverless functions and static sites, not the persistent WebSocket server Streamlit requires. Streamlit Community Cloud, Render, Railway, or a VM are the viable hosts.
@@ -134,14 +134,14 @@ This app is deployed at **[rpa-tools-lgtdu6uyh9sykzia3u3trw.streamlit.app](https
 
 ```
 RPA-Tools/
+├── requirements.txt              # Python dependencies (used by Streamlit Cloud)
 ├── pyrpa/
 │   ├── UI/
 │   │   ├── rpa_tools.py          # App entry point
 │   │   ├── common.py             # Shared widgets and file utilities
 │   │   ├── capping_ui_v2.py
 │   │   ├── sample_stats_ui.py
-│   │   ├── ...                   # One *_ui.py per tool
-│   │   └── requirements.txt
+│   │   └── ...                   # One *_ui.py per tool
 │   ├── capping.py
 │   ├── sample.py
 │   ├── contact_plot.py
