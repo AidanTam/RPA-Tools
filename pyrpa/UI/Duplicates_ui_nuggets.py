@@ -641,9 +641,12 @@ def clean_numeric(s):
     return pd.to_numeric(s, errors="coerce")
 
 def tmp_fig(fig):
-    t = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-    fig.savefig(t.name, dpi=300, bbox_inches="tight"); plt.close(fig)
-    return t.name
+    # In-memory PNG buffer instead of a leaked NamedTemporaryFile(delete=False);
+    # 150 dpi keeps slides crisp at a fraction of the memory. See Blanks_ui for context.
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight"); plt.close(fig)
+    buf.seek(0)
+    return buf
 
 def idx_of(val, opts): return opts.index(val) if val in opts else 0
 def safe_defaults(defs, opts): return [d for d in (defs or []) if d in opts]

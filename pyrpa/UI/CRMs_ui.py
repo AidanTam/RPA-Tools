@@ -644,18 +644,27 @@ def remove_placeholders_from_slide(slide):
         sp = shape._element
         sp.getparent().remove(sp)
 
-def save_fig_to_presentation(fig_list, presentation_path="charts_presentation.pptx"):
+def build_presentation_bytes(fig_list):
+    """Build the slide deck entirely in memory and return the .pptx bytes.
+
+    Previously this wrote the deck to a file on the server and handed the user
+    a relative markdown link (`[Download](charts_presentation.pptx)`). On a
+    hosted deploy that link is a navigation, not a download — clicking it
+    reloaded the app into a fresh session and bounced the user back to the
+    Home/passphrase screen, and the file never reached their computer. Serving
+    the bytes through st.download_button (see call site) fixes both.
+    """
     prs = Presentation()
     for fig in fig_list:
         slide = prs.slides.add_slide(prs.slide_layouts[5])
         remove_placeholders_from_slide(slide)
         buf = io.BytesIO()
-        fig.savefig(buf, format='png', bbox_inches='tight')
-        buf.seek(0)
+        fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
 
         # centre image on slide
         available_width  = prs.slide_width
         available_height = prs.slide_height
+        buf.seek(0)
         tmp_pic = slide.shapes.add_picture(buf, 0, 0, width=available_width)
         image_aspect_ratio = tmp_pic.width / tmp_pic.height
         slide_aspect_ratio = available_width / available_height
@@ -668,11 +677,13 @@ def save_fig_to_presentation(fig_list, presentation_path="charts_presentation.pp
         left = (available_width  - final_width)  / 2
         top  = (available_height - final_height) / 2
         slide.shapes._spTree.remove(tmp_pic._element)
+        buf.seek(0)
         slide.shapes.add_picture(buf, left, top,
                                  width=final_width, height=final_height)
         buf.close()
-    prs.save(presentation_path)
-    return presentation_path
+    out = io.BytesIO()
+    prs.save(out)
+    return out.getvalue()
 
 def serialize_session_state(state):
     serialized_state = {}
@@ -1068,7 +1079,7 @@ if file is not None:
                         y_axis_min = data_subset[grade_col].min()
                         y_axis_max = data_subset[grade_col].max()
 
-                    fig, ax = plt.subplots(figsize=fig_size, dpi=500)
+                    fig, ax = plt.subplots(figsize=fig_size, dpi=150)
                     ax.scatter(data_subset['Sequence'],
                                data_subset[grade_col],
                                label=f'{elem}',
@@ -1239,8 +1250,14 @@ if file is not None:
         pass
 
     if st.button('Generate Presentation'):
-        presentation_path = save_fig_to_presentation(fig_list)
-        st.success(f"Presentation generated! [Download]({presentation_path})")
+        st.session_state['crm_ppt_bytes'] = build_presentation_bytes(fig_list)
+    if st.session_state.get('crm_ppt_bytes'):
+        st.download_button(
+            "Download plots.pptx",
+            data=st.session_state['crm_ppt_bytes'],
+            file_name="standards_plots.pptx",
+            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        )
 
 # ------------------------------------------------------------------
 #                     SAVE SESSION STATE

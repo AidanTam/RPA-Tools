@@ -334,8 +334,11 @@ def clean_numeric(s):
     )
 
 def tmp_fig(fig):
-    t = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-    fig.savefig(t.name, dpi=300, bbox_inches="tight"); plt.close(fig); return t.name
+    # Return an in-memory PNG buffer (accepted by pptx add_picture) rather than
+    # a NamedTemporaryFile(delete=False) that was never cleaned up — those leaked
+    # a file on every rerun. 150 dpi keeps slides crisp at a fraction of the memory.
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight"); plt.close(fig); buf.seek(0); return buf
 
 _safe_key_pat = re.compile(r"[^0-9a-zA-Z_]+")
 def safe_key(*parts): return _safe_key_pat.sub("_", "_".join("" if p is None else str(p) for p in parts))
