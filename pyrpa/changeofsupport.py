@@ -1,6 +1,6 @@
 '''
 Class for performing support correction
-gammabar not working yet
+gammabar: pure-Python GSLIB gammabar (no external .exe; runs on any platform)
 DGM still to come
 '''
 
@@ -244,6 +244,44 @@ class supportcorrection(object):
                              "GCOS Grade": gcos_grade});
 
 
+def _gslib_rotmat(ang1, ang2, ang3, anis1, anis2):
+    """GSLIB ``setrot``: build the 3x3 matrix that rotates a lag vector and
+    scales the minor/vertical axes by 1/anisotropy, so that the squared length
+    of the transformed vector is measured in major-axis range units."""
+    DEG2RAD = np.pi / 180.0
+    EPSLON = 1.0e-20
+    if 0.0 <= ang1 < 270.0:
+        alpha = (90.0 - ang1) * DEG2RAD
+    else:
+        alpha = (450.0 - ang1) * DEG2RAD
+    beta = -ang2 * DEG2RAD
+    theta = ang3 * DEG2RAD
+    sina, sinb, sint = np.sin(alpha), np.sin(beta), np.sin(theta)
+    cosa, cosb, cost = np.cos(alpha), np.cos(beta), np.cos(theta)
+    afac1 = 1.0 / max(anis1, EPSLON)
+    afac2 = 1.0 / max(anis2, EPSLON)
+    return np.array([
+        [cosb * cosa, cosb * sina, -sinb],
+        [afac1 * (-cost * sina + sint * sinb * cosa),
+         afac1 * (cost * cosa + sint * sinb * sina),
+         afac1 * (sint * cosb)],
+        [afac2 * (sint * sina + cost * sinb * cosa),
+         afac2 * (-sint * cosa + cost * sinb * sina),
+         afac2 * (cost * cosb)],
+    ])
+
+
+def _structure_gamma(hr, it):
+    """Standardised (sill = 1) variogram value for a lag ratio hr = h / range."""
+    if it == 1:      # spherical
+        return np.where(hr < 1.0, hr * (1.5 - 0.5 * hr * hr), 1.0)
+    elif it == 2:    # exponential
+        return 1.0 - np.exp(-3.0 * hr)
+    elif it == 3:    # gaussian
+        return 1.0 - np.exp(-3.0 * hr * hr)
+    raise ValueError("Unsupported structure type %r (expected 1, 2 or 3)" % (it,))
+
+
 def gammabar(block_size,
              discretisation=[4, 4, 4],
              rotation=[20, 10, 30],
@@ -251,39 +289,54 @@ def gammabar(block_size,
              structure_types=[1, 1],
              variances=[0.5, 0.3],
              vranges=[[100, 50, 10], [120, 60, 15]]):
+    """Average variogram value within a block, gamma-bar(v, v).
 
-    os.chdir(path)
+    Pure-Python reimplementation of the GSLIB ``gammabar`` program. The previous
+    implementation wrote a ``.par`` file and shelled out to a bundled Windows
+    ``gammabar.exe`` via ``powershell.exe`` (see git history) -- that cannot run
+    on the Linux hosts used by Streamlit Cloud, so the Gammabar tool errored on
+    the hosted app. This computes the same quantity directly.
 
-    gammabar_par = open("gammabar.par", "w")
-    gammabar_par.write("Parameters for Gammabar " + "\n")
-    gammabar_par.write("************************ " + "\n")
-    gammabar_par.write("  " + "\n")
-    gammabar_par.write("START OF PARAMETERS: " + "\n")
-    gammabar_par.write(str(block_size[0]) + " " + str(block_size[1]) + " " + str(block_size[2]) + " " + "\n")
-    gammabar_par.write(
-        str(discretisation[0]) + " " + str(discretisation[1]) + " " + str(discretisation[2]) + " " + "\n")
-    gammabar_par.write("0             - calculate measure of dissemination? 0-no, 1-yes \n")
-    gammabar_par.write(str(len(variances)) + " " + str(nugget) + " " + "\n")
+    The block is discretised into nx*ny*nz points and gamma-bar is the mean
+    variogram value over every ordered pair of points; the diagonal (lag h = 0)
+    contributes 0, matching GSLIB. ``rotation`` is [ang1, ang2, ang3] (GSLIB
+    azimuth/dip/plunge in degrees) applied to every structure; each ``vranges``
+    entry is [a_major, a_minor, a_vertical]. Structure types are 1=spherical,
+    2=exponential, 3=gaussian. With nugget + sum(variances) == 1 (as the caller
+    normalises), the result lies in [0, 1].
+    """
+    bx, by, bz = [float(v) for v in block_size]
+    nx, ny, nz = [max(1, int(round(d))) for d in discretisation]
 
-    for structure_type, var, vrange in zip(structure_types, variances, vranges):
-        gammabar_par.write(
-            str(structure_type) + " " + str(var) + " " + str(rotation[0]) + " " + str(rotation[1]) + " " + str(
-                rotation[2]) + " " + "\n")
-        gammabar_par.write(str(vrange[0]) + " " + str(vrange[1]) + " " + str(vrange[2]) + " " + "\n")
+    # Discretisation point offsets inside the block. Only pairwise differences
+    # enter gamma-bar, so the block need not be centred on the origin.
+    xs = (np.arange(nx) + 0.5) * (bx / nx)
+    ys = (np.arange(ny) + 0.5) * (by / ny)
+    zs = (np.arange(nz) + 0.5) * (bz / nz)
+    gx, gy, gz = np.meshgrid(xs, ys, zs, indexing="ij")
+    pts = np.column_stack([gx.ravel(), gy.ravel(), gz.ravel()])   # (N, 3)
+    n = pts.shape[0]
 
-    gammabar_par.close()
+    diff = pts[:, None, :] - pts[None, :, :]                      # (N, N, 3) lags
 
-    subprocess.call("echo gammabar.par | powershell.exe ./gammabar.exe > gammabar.out", shell=True)
+    ang1, ang2, ang3 = rotation[0], rotation[1], rotation[2]
+    gamma = np.zeros((n, n))
+    for it, cc, vr in zip(structure_types, variances, vranges):
+        a_major = float(vr[0])
+        anis1 = (float(vr[1]) / a_major) if a_major else 1.0
+        anis2 = (float(vr[2]) / a_major) if a_major else 1.0
+        rm = _gslib_rotmat(ang1, ang2, ang3, anis1, anis2)
+        rot = diff @ rm.T                                        # (N, N, 3)
+        h = np.sqrt(np.einsum("ijk,ijk->ij", rot, rot))
+        hr = h / a_major if a_major else np.zeros_like(h)
+        gamma += float(cc) * _structure_gamma(hr, int(it))
 
-    with open("gammabar.out") as f:
-        content = f.readlines()
+    # Nugget contributes at every non-zero lag; the diagonal stays at 0.
+    off = ~np.eye(n, dtype=bool)
+    gamma[off] += float(nugget)
+    gamma[~off] = 0.0
 
-    avg_var = content[-4].replace('/n', ' ').split("=")[-1]
-    # avg_var = float(content[-4].strip("/n").split("=")[-1])
-
-    os.chdir(cwd)
-
-    return avg_var;
+    return float(gamma.mean())
 
 
 
