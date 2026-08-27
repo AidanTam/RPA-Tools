@@ -5,7 +5,6 @@ from scipy.spatial import cKDTree
 import streamlit as st
 import matplotlib.pyplot as plt
 from scipy.stats import variation
-from pygwalker.api.streamlit import StreamlitRenderer
 
 
 
@@ -49,11 +48,19 @@ if BHS_file and DDH_file:
             element = st.sidebar.text_input("element", DDH_Grade_Field )
             unit = st.sidebar.text_input("Unit", ' ' )
 
-        if DDH_coordinate_fields:
-            tree = cKDTree(DDH[DDH_coordinate_fields])
+        # The nearest-neighbour search below needs both coordinate field sets.
+        # Bail out with guidance until they're chosen, otherwise `tree`/`indices`
+        # are never defined and the tool throws a NameError right after upload.
+        if not (DDH_coordinate_fields and BHS_coordinate_fields):
+            st.info("Select the drill hole and blast hole coordinate fields in the sidebar to run the comparison.")
+            st.stop()
 
-        if BHS_coordinate_fields:
-            distances, indices = tree.query(BHS[BHS_coordinate_fields])
+        if len(DDH_coordinate_fields) != len(BHS_coordinate_fields):
+            st.warning("Pick the same number of coordinate fields for drill holes and blast holes.")
+            st.stop()
+
+        tree = cKDTree(DDH[DDH_coordinate_fields])
+        distances, indices = tree.query(BHS[BHS_coordinate_fields])
 
         nearest_points = DDH.iloc[indices].reset_index(drop=True)
         result_df = BHS.copy()
@@ -428,9 +435,14 @@ if BHS_file and DDH_file:
 
 
     with table2:
+        # The pygwalker explorer is an optional extra. Import it lazily so an
+        # incompatible/missing pygwalker (e.g. its Streamlit integration lagging
+        # a newer Streamlit release) degrades this one tab instead of crashing
+        # the whole tool at import time.
         try:
+            from pygwalker.api.streamlit import StreamlitRenderer
             pyg_app = StreamlitRenderer(result_df)
             pyg_app.explorer()
-        except:
+        except Exception:
             pass
 

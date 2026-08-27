@@ -10,7 +10,7 @@ input_convention = st.selectbox("Input Rotation Convention", options=rotations, 
 rot1 = st.number_input(label="Rotation 1", min_value=-360., max_value=360., value=0., key='r1')
 rot2 = st.number_input(label="Rotation 2", min_value=-360., max_value=360., value=0., key='r2')
 rot3 = st.number_input(label="Rotation 3", min_value=-360., max_value=360., value=0., key='r3')
-output_convention = st.selectbox("Output Rotation Convention", options=rotations, index=0, key='inp_cov')
+output_convention = st.selectbox("Output Rotation Convention", options=rotations, index=0, key='out_cov')
 
 mat = transforms3d.euler.euler2mat(ai=np.radians(rot1), aj=np.radians(rot2), ak=np.radians(rot3), axes=input_convention)
 ai, aj, ak = transforms3d.euler.mat2euler(mat, axes=output_convention)

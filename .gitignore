@@ -4,3 +4,5 @@ __pycache__/
 gammabar.out
 gammabar.par
 _temp_cap_dict
+.venv/
+.claude/
