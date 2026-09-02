@@ -174,16 +174,20 @@ if df is not None:
             # defining capping level
             _temp_dict.loc[i, 'Parameter'] = float(st.sidebar.text_input(i, value=_temp_dict.loc[i, 'Parameter'], key=i))
             filt = smp_obj.data[_temp_dict.loc['Grade Field', 'Parameter']] >= _temp_dict.loc[i, 'Parameter']
-            smp_obj.data['Capping Levels'][filt] = i
-            smp_obj.data['Point Size'][filt] = point_sizes[s]
-            smp_obj.data['Point Size3D'][filt] = float(s + 3)
+            # Single-step .loc assignment. Chained assignment
+            # (df['col'][filt] = ...) silently no-ops under pandas Copy-on-Write,
+            # which left every point labelled 'Uncapped' — so colouring by
+            # 'Capping Levels' made the whole 3D model one colour.
+            smp_obj.data.loc[filt, 'Capping Levels'] = i
+            smp_obj.data.loc[filt, 'Point Size'] = point_sizes[s]
+            smp_obj.data.loc[filt, 'Point Size3D'] = float(s + 3)
 
         # _temp_dict.to_csv('_temp_cap_dict')
         uncapped_color = st.sidebar.color_picker('Uncapped', '#808080')
         lowcap_color = st.sidebar.color_picker('Low Cap', '#0000ff')
         selectedcap_color = st.sidebar.color_picker('Selected Cap', '#008800')
         highcap_color = st.sidebar.color_picker('High Cap', '#ff0000')
-        smp_obj.data['Point Size'][smp_obj.data[_temp_dict.loc['Grade Field', 'Parameter']] == smp_obj.data[_temp_dict.loc['Grade Field', 'Parameter']].max()] = 5.
+        smp_obj.data.loc[smp_obj.data[_temp_dict.loc['Grade Field', 'Parameter']] == smp_obj.data[_temp_dict.loc['Grade Field', 'Parameter']].max(), 'Point Size'] = 5.
 
         # save settings stuff ------------------------------------------------------------------------------------------------
 
@@ -287,13 +291,24 @@ if df is not None:
             st.info("## 3D View")
             col4,col5,col6 = st.columns([1,6,1])
 
-            mycolors = [uncapped_color, lowcap_color, selectedcap_color, highcap_color]
+            # Map each capping level to its picked colour BY NAME. Using
+            # color_discrete_sequence assigns colours by order-of-appearance in
+            # the data, so a plot missing a level (e.g. the Disintegration plot
+            # only shows the top 10% of grades, where 'Uncapped' never appears)
+            # would shift every colour to the wrong level. A name-keyed map keeps
+            # each level's colour correct regardless of which levels are present.
+            mycolormap = {'Uncapped': uncapped_color,
+                          'Low Cap': lowcap_color,
+                          'Selected Cap': selectedcap_color,
+                          'High Cap': highcap_color}
+            category_order = {'Capping Levels': ['Uncapped', 'Low Cap', 'Selected Cap', 'High Cap']}
             fig = px.scatter_3d(smp_obj.data,
                                 x=xyzfields[0],
                                 y=xyzfields[1],
                                 z=xyzfields[2],
                                 color='Capping Levels',
-                                color_discrete_sequence=mycolors,
+                                color_discrete_map=mycolormap,
+                                category_orders=category_order,
                                 size='Point Size3D', template='plotly_white')
 
             fig.update_layout(scene_aspectmode='data')
@@ -381,7 +396,8 @@ if df is not None:
                            x=x,
                            y=y,
                            color='Capping Levels',
-                           color_discrete_sequence=mycolors,
+                           color_discrete_map=mycolormap,
+                           category_orders=category_order,
                            size='Point Size')
 
           fig.update_layout(title=_temp_dict.loc['XYZ Plane', 'Parameter'] + pl_suffix,
@@ -514,12 +530,13 @@ if df is not None:
           col10,col11,col12 = st.columns([1,6,3])
           smp_obj.data["Metal Disintegration (1.0 - g(x)/g(x-1)*100)"] = cap_obj.disintegration_analysis()
           smp_obj.data['Disint_color'] = 0.
-          smp_obj.data['Disint_color'][smp_obj.data["Metal Disintegration (1.0 - g(x)/g(x-1)*100)"]>15] = 1.
+          smp_obj.data.loc[smp_obj.data["Metal Disintegration (1.0 - g(x)/g(x-1)*100)"]>15, 'Disint_color'] = 1.
           fig = px.scatter(smp_obj.data.loc[int(len(smp_obj.data)*0.9):],
                         x=_temp_dict.loc['Grade Field', 'Parameter'] ,
                         y="Metal Disintegration (1.0 - g(x)/g(x-1)*100)",
                         color='Capping Levels',
-                        color_discrete_sequence=mycolors,
+                        color_discrete_map=mycolormap,
+                        category_orders=category_order,
                         size='Point Size')
           fig.update_layout(xaxis_type="log")
           fig['layout']['xaxis'].update(title=_temp_dict.loc['Grade Field', 'Parameter'] + ' '+ gradeunit)
