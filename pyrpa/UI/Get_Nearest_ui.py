@@ -34,6 +34,16 @@ if BHS_file and DDH_file:
         BHS.dropna(how='all', inplace=True)
         DDH.dropna(how='all', inplace=True)
 
+        # Reset the index after dropping blank rows. dropna leaves a
+        # non-contiguous index, and the nearest-neighbour join below concats
+        # the reset-indexed `nearest_points` onto `result_df` with axis=1 —
+        # pandas aligns those on the index, so a gapped BHS index misaligns
+        # every match after the first gap and injects NaN rows (the whole
+        # "one to many" result breaks). The "one to one" path masked this by
+        # dropping the NaN rows during de-duplication.
+        BHS.reset_index(drop=True, inplace=True)
+        DDH.reset_index(drop=True, inplace=True)
+
         # st.data_editor(BHS)
         BHS_Grade_Field = st.sidebar.selectbox("Select the Blast Hole Grade Field ", BHS.columns)
         DDH_Grade_Field = st.sidebar.selectbox("Select the Drill Hole Grade Field ", DDH.columns)
@@ -69,6 +79,14 @@ if BHS_file and DDH_file:
         one_to_one = st.sidebar.checkbox("One to One")
 
         if one_to_one:
+            # De-duplication needs the Drill ID/From/To fields to identify a
+            # unique drill-hole interval. Without them drop_duplicates(subset=[])
+            # treats every row as identical and collapses the result to a single
+            # row, so guard against an empty selection instead of silently
+            # returning one row.
+            if not DDH_from_to:
+                st.warning("Select the Drill ID, From, To fields in the sidebar to use One to One matching.")
+                st.stop()
             result_df = result_df.sort_values(by='distance').drop_duplicates(subset=DDH_from_to, keep='first')
         # result_df.to_csv(r'C:\Application\Get_Nearest\output\Dorota.csv')
         st.data_editor(result_df,key='test')
