@@ -21,7 +21,9 @@ _repo_root = os.path.abspath(os.path.join(path, '..', '..'))
 if _repo_root not in sys.path:
     sys.path.insert(0, _repo_root)
 
-st.set_page_config(page_title="SLR Celest RPA Tools", layout="wide")
+st.set_page_config(page_title="SLR Tools",
+                   page_icon=Image.open(os.path.join(path, 'logo-slr-2018.png')),
+                   layout="wide")
 
 # Suppress set_page_config in child tool modules — it can only be called once
 import streamlit as _st
@@ -39,7 +41,8 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
-    st.title("SLR Celest RPA Tools")
+    st.image(Image.open(os.path.join(path, 'logo-slr-2018.png')), width=220)
+    st.title("SLR Tools")
     passphrase = st.text_input("Enter passphrase to continue", type="password")
     if passphrase:
         if passphrase == APP_PASSWORD:
@@ -51,8 +54,9 @@ if not st.session_state.authenticated:
 
 logo = Image.open(os.path.join(path, 'logo-slr-2018.png'))
 st.sidebar.image(logo, caption='')
-logo = Image.open(os.path.join(path, 'Celest.png'))
-st.sidebar.image(logo, caption='')
+# Celest kept as a smaller secondary mark so the app reads as SLR-first.
+celest_logo = Image.open(os.path.join(path, 'Celest.png'))
+st.sidebar.image(celest_logo, width=90)
 
 
 @st.cache_data(show_spinner=False)
@@ -116,7 +120,8 @@ def run_active_tool():
 # ── Home ─────────────────────────────────────────────────────────────────────
 if section == "Home":
     st.session_state.active_tool = None
-    st.title("SLR Celest Resource Estimation Tools")
+    st.title("SLR Tools")
+    st.caption("Celest · Resource Estimation Tools")
     st.markdown("A collection of miraculous tools for resource geologists.")
     st.markdown("**Version 1.0.2**")
     st.markdown("Select a tool from the sidebar to get started.")
