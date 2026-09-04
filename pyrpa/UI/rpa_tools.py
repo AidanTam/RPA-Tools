@@ -29,34 +29,72 @@ st.set_page_config(page_title="SLR Tools",
 import streamlit as _st
 _st.set_page_config = lambda *args, **kwargs: None
 
-# ── Passphrase gate ─────────────────────────────────────────────────────────
-# Internal-tool access control. Set APP_PASSWORD in Streamlit secrets (or the
-# APP_PASSWORD env var) to override the default; falls back to "SLR123".
-try:
-    APP_PASSWORD = st.secrets["APP_PASSWORD"]
-except Exception:
-    APP_PASSWORD = os.environ.get("APP_PASSWORD", "SLR123")
+# ── Authentication gate ──────────────────────────────────────────────────────
+# Microsoft Entra ID single-tenant SSO via Streamlit's native OIDC support
+# (st.login / st.user). Registering the app as SINGLE-TENANT means only accounts
+# in the SLR Entra directory can sign in — that is the "employees only" control.
+#
+# SSO activates automatically once an [auth] block is present in Streamlit
+# secrets (setup steps: docs/microsoft-sso-setup.md). Until IT adds those
+# secrets the app falls back to the legacy shared passphrase, so deploying this
+# change can't lock everyone out mid-rollout. Once a real employee sign-in is
+# confirmed in production, delete the passphrase fallback below.
 
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
-if not st.session_state.authenticated:
+def _login_header(subtitle):
     st.image(Image.open(os.path.join(path, 'logo-slr-2018.png')), width=220)
     st.title("SLR Tools")
-    passphrase = st.text_input("Enter passphrase to continue", type="password")
-    if passphrase:
-        if passphrase == APP_PASSWORD:
-            st.session_state.authenticated = True
-            st.rerun()
-        else:
-            st.error("Incorrect passphrase.")
-    st.stop()
+    st.caption(subtitle)
+
+try:
+    _use_sso = "auth" in st.secrets      # [auth] configured => Entra SSO is live
+except Exception:
+    # st.secrets raises StreamlitSecretNotFoundError when no secrets file exists
+    # at all — treat that as "SSO not configured" and fall back to the passphrase.
+    _use_sso = False
+
+if _use_sso:
+    if not st.user.is_logged_in:
+        _login_header("Sign in with your SLR Microsoft account to continue.")
+        st.button("Log in with Microsoft", type="primary", on_click=st.login)
+        st.stop()
+    # A successful sign-in against the single-tenant app registration guarantees
+    # the user is in the SLR directory, so no extra allow-listing is needed here.
+else:
+    # ── Legacy passphrase fallback (transitional — remove after SSO cutover) ──
+    try:
+        APP_PASSWORD = st.secrets["APP_PASSWORD"]
+    except Exception:
+        APP_PASSWORD = os.environ.get("APP_PASSWORD", "SLR123")
+
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+
+    if not st.session_state.authenticated:
+        _login_header("Enter passphrase to continue.")
+        passphrase = st.text_input("Passphrase", type="password",
+                                   label_visibility="collapsed")
+        if passphrase:
+            if passphrase == APP_PASSWORD:
+                st.session_state.authenticated = True
+                st.rerun()
+            else:
+                st.error("Incorrect passphrase.")
+        st.stop()
 
 logo = Image.open(os.path.join(path, 'logo-slr-2018.png'))
 st.sidebar.image(logo, caption='')
 # Celest kept as a smaller secondary mark so the app reads as SLR-first.
 celest_logo = Image.open(os.path.join(path, 'Celest.png'))
 st.sidebar.image(celest_logo, width=90)
+
+# Signed-in identity + logout (only meaningful under SSO).
+if _use_sso:
+    try:
+        st.sidebar.caption(f"Signed in as {st.user.email}")
+    except Exception:
+        pass
+    st.sidebar.button("Log out", on_click=st.logout)
+    st.sidebar.divider()
 
 
 @st.cache_data(show_spinner=False)
