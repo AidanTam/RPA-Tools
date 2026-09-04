@@ -686,12 +686,30 @@ def build_presentation_bytes(fig_list):
     return out.getvalue()
 
 def serialize_session_state(state):
+    """Build a JSON-serialisable snapshot of session state.
+
+    Only values that can round-trip through JSON are kept. Anything else —
+    the generated PPTX bytes in `crm_ppt_bytes`, DataFrames, uploaded-file
+    handles, numpy scalars/arrays that don't coerce — is dropped. Previously
+    every value was passed straight to `json.dumps` at the call site, so the
+    first non-serialisable entry (e.g. after clicking Generate Presentation)
+    raised a TypeError that ran *before* the 'Save Progress' download button
+    and stopped it from ever rendering.
+    """
     serialized_state = {}
     for key, value in state.items():
         if isinstance(value, (datetime.date, datetime.datetime)):
             serialized_state[key] = value.isoformat()
-        else:
-            serialized_state[key] = value
+            continue
+        if isinstance(value, np.generic):      # numpy scalar -> python scalar
+            value = value.item()
+        elif isinstance(value, np.ndarray):    # numpy array -> list
+            value = value.tolist()
+        try:
+            json.dumps(value)                   # keep only what JSON accepts
+        except (TypeError, ValueError):
+            continue
+        serialized_state[key] = value
     return serialized_state
 
 def deserialize_session_state(state_dict):
@@ -1262,8 +1280,13 @@ if file is not None:
 # ------------------------------------------------------------------
 #                     SAVE SESSION STATE
 # ------------------------------------------------------------------
-session_state_dict = serialize_session_state(st.session_state)
-session_state_json = json.dumps(session_state_dict)
+try:
+    session_state_json = json.dumps(serialize_session_state(st.session_state))
+except (TypeError, ValueError):
+    # serialize_session_state already drops non-serialisable values, so this
+    # should not happen — but never let a serialisation hiccup remove the
+    # Save Progress button. Fall back to an empty snapshot.
+    session_state_json = "{}"
 st.download_button('Save Progress',
                    data=session_state_json,
                    file_name='saved_progress.json',
