@@ -12,10 +12,10 @@ from scipy.stats import variation
 st.set_page_config(layout="wide")
 
 # File upload and user inputs
-BHS_file = st.sidebar.file_uploader("Choose the Blast hole database")
+BHS_file = st.sidebar.file_uploader("Dataset 1")
 BHS_type = st.sidebar.text_input("Data Type 1", 'BHS' )
 BHS_color = st.sidebar.color_picker("Pick A Color for "+BHS_type, "#667545")
-DDH_file = st.sidebar.file_uploader("Choose the Drill hole database")
+DDH_file = st.sidebar.file_uploader("Dataset 2")
 DDH_type = st.sidebar.text_input("Data Type 2", 'DDH' )
 DDH_color = st.sidebar.color_picker("Pick A Color for "+DDH_type, "#D6F591")
 GradecapBHS = st.sidebar.number_input("Capping Value for Blast holes", value=999999.00)
