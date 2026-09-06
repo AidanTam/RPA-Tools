@@ -62,12 +62,24 @@ st.sidebar.image(celest_logo, width=90)
 @st.cache_data(show_spinner=False)
 def _build_repo_zip():
     """Zip up the currently-running codebase so users can keep a local
-    copy that won't change if the hosted version is later updated/broken."""
-    exclude_dirs = {'.git', '__pycache__', '.streamlit'}
+    copy that won't change if the hosted version is later updated/broken.
+
+    The zip walks the filesystem (not git), so it deliberately excludes
+    virtual environments: those are OS-/machine-specific and huge, and the
+    downloaded copy is meant to be rebuilt locally via `pip install -r
+    requirements.txt`. Skipping them keeps the download small and portable
+    while still shipping requirements.txt so every dependency reinstalls
+    cleanly on the user's machine."""
+    exclude_dirs = {'.git', '__pycache__', '.streamlit', '.venv', 'venv', 'env', '.claude'}
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
         for root, dirs, files in os.walk(_repo_root):
-            dirs[:] = [d for d in dirs if d not in exclude_dirs]
+            # Drop excluded names, plus any directory that is itself a virtual
+            # environment (pyvenv.cfg is the definitive marker) regardless of
+            # what it's named.
+            dirs[:] = [d for d in dirs
+                       if d not in exclude_dirs
+                       and not os.path.isfile(os.path.join(root, d, 'pyvenv.cfg'))]
             for f in files:
                 if f.endswith('.pyc'):
                     continue
