@@ -85,7 +85,7 @@ Select a section from the sidebar to browse available tools.
 ### Data Validation
 | Tool | Description |
 |------|-------------|
-| Data Verification Tool | Merge lab certificate files, compare against assay database |
+| Data Verification Tool | Merge lab certificate files (`.csv`/`.xlsx`/`.xlsm`), compare against assay database |
 | Drill Hole Comparison | Nearest-neighbour drillhole comparison |
 
 ---
@@ -164,6 +164,7 @@ RPA-Tools/
 | Standards (CRMs) | Removed the upper/lower limit parameters from the combined CRM summary table |
 | Capping | `Metal Loss` in the Capping Summary table now matches the `Percent Metal Loss` in the Decile Analysis table (computed from unrounded weighted averages) |
 | Capping | Fixed the Capping Summary table rendering as all-NaN under newer pandas (chained-assignment issue) |
+| Data Verification | Certificate and assay uploaders now accept Excel (`.xlsx`/`.xlsm`) directly as well as `.csv` — no more Save-As-CSV step. Files that fail to merge now report why instead of failing silently. |
 
 ## Planned / Outstanding Updates
 

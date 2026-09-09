@@ -4,6 +4,48 @@ import os
 import numpy as np
 st.set_page_config(layout="wide")
 
+# Accepted certificate / assay file extensions. Excel needs openpyxl (in
+# requirements.txt); the old .xls format would additionally need xlrd, which
+# is not installed, so it is intentionally left out.
+TABULAR_TYPES = ['csv', 'xlsx', 'xlsm']
+
+
+def _is_excel(name):
+    return str(name).lower().endswith(('.xlsx', '.xlsm'))
+
+
+def _read_tabular(fileobj, name, skiprows=None, header=0):
+    """Read an uploaded CSV or Excel file into a DataFrame.
+
+    Branches on the file extension so lab certificates exported straight
+    from Excel work without a manual Save-As-CSV step.
+    """
+    fileobj.seek(0)
+    if _is_excel(name):
+        return pd.read_excel(fileobj, skiprows=skiprows, header=header)
+    return pd.read_csv(fileobj, skiprows=skiprows, header=header)
+
+
+def _detect_header_row(fileobj, name, keyword):
+    """Return the number of leading rows to skip, found by locating the
+    row that contains ``keyword`` (mirrors the original CSV text scan for
+    Excel by reading the sheet as raw strings)."""
+    fileobj.seek(0)
+    if _is_excel(name):
+        raw = pd.read_excel(fileobj, header=None, dtype=str)
+        for i in range(len(raw)):
+            rowvals = [str(v) for v in raw.iloc[i].tolist()]
+            if any(keyword in v for v in rowvals):
+                return max(i - 1, 0)
+        return 0
+    byte_data = fileobj.getvalue()
+    string_data = byte_data.decode('utf-8')
+    lines = string_data.splitlines()
+    for i, line in enumerate(lines):
+        if keyword in line:
+            return max(i - 1, 0)
+    return 0
+
 if 'skipped' not in st.session_state:
     st.session_state['skipped'] = None
 
@@ -52,7 +94,7 @@ def replace_detection_limits():
 dataframes = []
 elementdf = {}
 with st.sidebar:
-    uploaded_file = st.file_uploader("Certificates to Merge",accept_multiple_files=True)
+    uploaded_file = st.file_uploader("Certificates to Merge", accept_multiple_files=True, type=TABULAR_TYPES)
     if uploaded_file is not None:
         filenames = [i.name for i in uploaded_file ]
         files = [i for i in uploaded_file ]
@@ -76,11 +118,11 @@ with st.sidebar:
 
     update_values = st.button(label='Update Values',on_click = ChangedCol)
     filter_button = st.button(label='Filter Results', on_click=Filter)
-    assay_file = st.file_uploader("Upload Assay File",accept_multiple_files=False)
+    assay_file = st.file_uploader("Upload Assay File", accept_multiple_files=False, type=TABULAR_TYPES)
     certcols = st.multiselect('Certif. Columns to keep', st.session_state.filter)
     assaycols = st.multiselect('Assay Columns to keep', st.session_state.assaydf.columns)
     if assay_file is not None:
-        st.session_state.assaydf = pd.read_csv(assay_file)
+        st.session_state.assaydf = _read_tabular(assay_file, assay_file.name)
     Elements = [k for k in range(st.number_input('Number of Element', min_value=1, value=1, step=1))]
 
 certelements = []
@@ -108,20 +150,11 @@ with st.expander("Data Checker"):
     else:
         try:
             index = filenames.index(filetocheck)
-            byte_data = files[index].getvalue()
-            string_data = byte_data.decode('utf-8')
-            lines = string_data.splitlines()
-            for i, line in enumerate(lines):
-                header_row = None
-                if Headerkeywrod in line:
-                    header_row = i-1
-                    if header_row == -1:
-                        header_row = 0
-                    break
+            header_row = _detect_header_row(files[index], filetocheck, Headerkeywrod)
             st.write(str(header_row) + ' Rows Skipped')
             st.session_state.skipped = [i for i in range(header_row)]
             st.session_state.skipped.append(RowsToSkip)
-            df = pd.read_csv(files[index], skiprows=st.session_state.skipped, header=[i for i in range(HeaderRows)])
+            df = _read_tabular(files[index], filetocheck, skiprows=st.session_state.skipped, header=[i for i in range(HeaderRows)])
             df = df.dropna(how='all')
             st.dataframe(df)
         except Exception as e:
@@ -132,7 +165,7 @@ with st.expander("Merged Table"):
     for k in files:
         fileindex = files.index(k)
         try:
-            df2 = pd.read_csv(k,skiprows=st.session_state.skipped, header=[i for i in range(HeaderRows)])
+            df2 = _read_tabular(k, filenames[fileindex], skiprows=st.session_state.skipped, header=[i for i in range(HeaderRows)])
             df2.columns = ['_'.join(col).strip() for col in df2.columns.values]
             df2['Filename'] = filenames[fileindex]
             dataframes.append(df2)
@@ -140,8 +173,8 @@ with st.expander("Merged Table"):
                 replace_detection_limits()
             else:
                 Merge()
-        except:
-            pass
+        except Exception as e:
+            st.warning(f'Could not merge "{filenames[fileindex]}": {e}')
     st.dataframe(st.session_state.mergeddf)
     st.download_button(
                         label="Download Merged Certificates",
