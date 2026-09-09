@@ -1,0 +1,624 @@
+<title>Celest Tools Field Guide</title>
+<meta name="description" content="User manual for the SLR Celest resource-estimation toolkit.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --bg:#F4F5F2; --surface:#FBFBF9; --surface-2:#ECEEE8; --inset:#E7EAE2;
+    --ink:#1B211D; --ink-soft:#49514A; --ink-faint:#7A827B;
+    --line:#DADED4; --line-strong:#C4CABE;
+    --accent:#3E5541; --accent-strong:#2B3D2E; --accent-tint:#E3EAE1;
+    --ore:#A9612F; --ore-tint:#F1E6DB;
+    --pass:#3B7A4A; --warn:#B4801F; --fail:#AC4429;
+    --shadow:0 1px 2px rgba(27,33,29,.04),0 6px 22px -12px rgba(27,33,29,.18);
+    --radius:14px;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    --display:"Archivo","IBM Plex Sans",system-ui,sans-serif;
+    --maxw:1200px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#131614; --surface:#1B1F1B; --surface-2:#22271F; --inset:#161A16;
+      --ink:#E9EBE4; --ink-soft:#AAB2A8; --ink-faint:#7C847C;
+      --line:#2C322B; --line-strong:#3A4238;
+      --accent:#8CB491; --accent-strong:#A9CBAD; --accent-tint:#20291F;
+      --ore:#D28C57; --ore-tint:#2C241C;
+      --pass:#6DBB7C; --warn:#DBAE52; --fail:#DC7358;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#131614; --surface:#1B1F1B; --surface-2:#22271F; --inset:#161A16;
+    --ink:#E9EBE4; --ink-soft:#AAB2A8; --ink-faint:#7C847C;
+    --line:#2C322B; --line-strong:#3A4238;
+    --accent:#8CB491; --accent-strong:#A9CBAD; --accent-tint:#20291F;
+    --ore:#D28C57; --ore-tint:#2C241C;
+    --pass:#6DBB7C; --warn:#DBAE52; --fail:#DC7358;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px -14px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box}
+  html,body{overflow-x:hidden}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:var(--sans);font-size:16px;line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent-strong);text-underline-offset:3px;text-decoration-thickness:1px}
+  h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;line-height:1.1;letter-spacing:-.01em}
+  code,.mono{font-family:var(--mono);font-size:.88em}
+  ::selection{background:var(--accent-tint)}
+
+  /* ---- shell ---- */
+  .shell{max-width:var(--maxw);margin:0 auto;padding:0 clamp(18px,4vw,40px)}
+  .layout{display:grid;grid-template-columns:236px minmax(0,1fr);gap:clamp(28px,5vw,64px);align-items:start}
+  @media (max-width:880px){.layout{grid-template-columns:1fr}}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--bg) 86%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .topbar .shell{display:flex;align-items:center;justify-content:space-between;height:58px;gap:16px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--display);font-weight:700;letter-spacing:-.01em}
+  .brand .glyph{width:30px;height:30px;border-radius:8px;background:var(--accent);color:#fff;
+    display:grid;place-items:center;font-size:16px;flex:none}
+  .brand small{display:block;font-family:var(--sans);font-weight:500;font-size:11px;
+    color:var(--ink-faint);letter-spacing:.06em;text-transform:uppercase;margin-top:-2px}
+  .theme-btn{font-family:var(--sans);font-size:12.5px;font-weight:600;color:var(--ink-soft);
+    background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 13px;cursor:pointer;
+    display:inline-flex;gap:7px;align-items:center}
+  .theme-btn:hover{border-color:var(--line-strong);color:var(--ink)}
+  .theme-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(46px,7vw,86px) 0 clamp(30px,4vw,44px)}
+  .eyebrow{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ore)}
+  .hero h1{font-size:clamp(2.5rem,6vw,4.15rem);font-weight:800;margin:.28em 0 .1em;max-width:14ch}
+  .hero .lede{font-size:clamp(1.06rem,1.7vw,1.24rem);color:var(--ink-soft);max-width:60ch;margin:.2em 0 0}
+  .facts{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}
+  .fact{display:flex;flex-direction:column;gap:1px;background:var(--surface);border:1px solid var(--line);
+    border-radius:11px;padding:11px 16px;box-shadow:var(--shadow)}
+  .fact b{font-family:var(--display);font-size:1.02rem}
+  .fact span{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint)}
+
+  /* ---- toc ---- */
+  .toc{position:sticky;top:74px;font-size:13.5px}
+  @media (max-width:880px){.toc{position:static;margin-bottom:8px;border:1px solid var(--line);
+    border-radius:12px;padding:14px 16px;background:var(--surface)}}
+  .toc .tt{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--ink-faint);margin:0 0 10px;padding-left:14px}
+  .toc a{display:block;color:var(--ink-soft);text-decoration:none;padding:5px 0 5px 14px;
+    border-left:2px solid var(--line);line-height:1.35}
+  .toc a:hover{color:var(--ink);border-color:var(--line-strong)}
+  .toc a.active{color:var(--accent-strong);border-color:var(--accent);font-weight:600}
+  .toc .sub{padding-left:26px;font-size:12.5px}
+
+  /* ---- sections ---- */
+  main{padding-bottom:80px}
+  section{scroll-margin-top:74px;padding:clamp(30px,5vw,52px) 0;border-top:1px solid var(--line)}
+  section:first-child{border-top:0}
+  .kicker{font-family:var(--mono);font-size:11.5px;font-weight:500;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--ore);margin-bottom:12px}
+  section h2{font-size:clamp(1.6rem,3.2vw,2.15rem);font-weight:700;margin:0 0 .35em}
+  section h2 .n{color:var(--ink-faint);font-weight:600;margin-right:.5em}
+  .prose{max-width:65ch}
+  .prose p{color:var(--ink-soft)}
+  .prose strong{color:var(--ink);font-weight:600}
+
+  /* ---- pipeline ---- */
+  .flow{display:flex;flex-direction:column;gap:0;margin-top:26px}
+  .stage{display:grid;grid-template-columns:auto 1fr;gap:20px;position:relative;padding-bottom:26px}
+  .stage:not(:last-child)::before{content:"";position:absolute;left:19px;top:44px;bottom:-4px;
+    width:2px;background:linear-gradient(var(--line-strong),var(--line))}
+  .stage .num{width:40px;height:40px;flex:none;border-radius:11px;background:var(--surface);
+    border:1px solid var(--line-strong);color:var(--accent-strong);font-family:var(--display);font-weight:700;
+    display:grid;place-items:center;font-size:1.05rem;z-index:1;box-shadow:var(--shadow)}
+  .stage .body{padding-top:2px}
+  .stage h3{font-size:1.16rem;font-weight:700;margin:.35em 0 .12em}
+  .stage p{margin:0 0 12px;color:var(--ink-soft);font-size:.95rem;max-width:62ch}
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{font-family:var(--mono);font-size:12px;font-weight:500;padding:4px 11px;border-radius:999px;
+    background:var(--accent-tint);color:var(--accent-strong);white-space:nowrap;border:1px solid transparent}
+  .chip.q{background:var(--ore-tint);color:var(--ore)}
+  .chip a{color:inherit;text-decoration:none}
+
+  /* ---- generic cards ---- */
+  .grid{display:grid;gap:16px;margin-top:26px}
+  .cols-3{grid-template-columns:repeat(auto-fill,minmax(272px,1fr))}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px 21px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:9px}
+  .card h4{font-size:1.08rem;font-weight:700;margin:0;display:flex;align-items:baseline;gap:9px}
+  .card .role{font-size:.93rem;color:var(--ink-soft);margin:0}
+  .card dl{margin:6px 0 0;display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:.86rem}
+  .card dt{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--ink-faint);padding-top:2px}
+  .card dd{margin:0;color:var(--ink-soft)}
+  .card dd b{color:var(--ink);font-weight:600}
+  .tag{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.05em;padding:3px 8px;
+    border-radius:6px;text-transform:uppercase;white-space:nowrap}
+  .tag.out{background:var(--accent-tint);color:var(--accent-strong)}
+
+  .cathead{display:flex;align-items:center;gap:14px;margin:38px 0 2px}
+  .cathead:first-of-type{margin-top:30px}
+  .cathead .bar{height:26px;width:4px;border-radius:3px;background:var(--accent)}
+  .cathead h3{font-size:1.3rem;font-weight:700;margin:0}
+  .cathead .count{font-family:var(--mono);font-size:11px;color:var(--ink-faint);
+    background:var(--surface-2);padding:3px 9px;border-radius:999px}
+
+  /* ---- file table ---- */
+  .tablewrap{overflow-x:auto;margin-top:24px;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  table{border-collapse:collapse;width:100%;min-width:620px;font-size:.9rem;background:var(--surface)}
+  th,td{text-align:left;padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+  thead th{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-faint);background:var(--surface-2);font-weight:600}
+  tbody tr:last-child td{border-bottom:0}
+  td .ext{font-family:var(--mono);font-weight:600;color:var(--accent-strong)}
+  td b{color:var(--ink);font-weight:600}
+
+  /* ---- callouts ---- */
+  .note{display:grid;grid-template-columns:auto 1fr;gap:14px;background:var(--surface-2);
+    border:1px solid var(--line);border-left:3px solid var(--ore);border-radius:11px;
+    padding:16px 18px;margin-top:22px;font-size:.92rem;color:var(--ink-soft)}
+  .note .ic{font-size:1.1rem;line-height:1.3}
+  .note b{color:var(--ink)}
+  .feature-list{list-style:none;padding:0;margin:22px 0 0;display:grid;gap:12px}
+  .feature-list li{display:grid;grid-template-columns:auto 1fr;gap:13px;align-items:start}
+  .feature-list .k{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.04em;
+    text-transform:uppercase;color:var(--accent-strong);background:var(--accent-tint);
+    padding:4px 9px;border-radius:6px;white-space:nowrap;margin-top:2px}
+  .feature-list .d{color:var(--ink-soft);font-size:.94rem}
+  .feature-list .d b{color:var(--ink);font-weight:600}
+
+  .legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:18px;font-size:.85rem;color:var(--ink-soft)}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .dot{width:10px;height:10px;border-radius:50%;flex:none}
+
+  footer{border-top:1px solid var(--line);padding:30px 0 60px;color:var(--ink-faint);font-size:.85rem}
+  footer .shell{display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between}
+  footer code{color:var(--ink-soft)}
+</style>
+
+<div class="topbar">
+  <div class="shell">
+    <div class="brand"><span class="glyph">✳</span><span>Celest Tools<small>Resource Estimation</small></span></div>
+    <button class="theme-btn" id="themeBtn" aria-label="Toggle colour theme"><span id="themeIco">◑</span><span id="themeTxt">Theme</span></button>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="shell">
+    <p class="eyebrow">User Manual · v1.0.2</p>
+    <h1>The resource geologist's field guide.</h1>
+    <p class="lede">Eighteen browser-based tools for taking drillhole assays from the lab all the way to a defensible resource estimate — QA/QC, validation, statistics, capping, geostatistics and reconciliation, with no install required. This guide explains how they fit together and how to drive each one.</p>
+    <div class="facts">
+      <div class="fact"><b>18 tools</b><span>6 sections</span></div>
+      <div class="fact"><b>.csv · .dm · .xlsx</b><span>Inputs</span></div>
+      <div class="fact"><b>Charts · XLSX · PPTX</b><span>Outputs</span></div>
+      <div class="fact"><b>Passphrase</b><span>Access</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="shell layout">
+  <nav class="toc" aria-label="Contents">
+    <p class="tt">Contents</p>
+    <a href="#workflow">The workflow</a>
+    <a href="#start">Getting started</a>
+    <a href="#inputs">File input types</a>
+    <a href="#reference">Tool reference</a>
+    <a href="#plotting" class="sub">Plotting</a>
+    <a href="#sample" class="sub">Sample</a>
+    <a href="#blockmodel" class="sub">Block model</a>
+    <a href="#geostats" class="sub">Geostats</a>
+    <a href="#qaqc" class="sub">QA/QC</a>
+    <a href="#validation" class="sub">Data validation</a>
+  </nav>
+
+  <main>
+    <!-- WORKFLOW -->
+    <section id="workflow">
+      <p class="kicker">Orientation</p>
+      <h2>How the tools fit together</h2>
+      <div class="prose">
+        <p>The toolkit mirrors the life of a resource estimation study. Data arrives from the assay lab and has to be <strong>trusted</strong> before it can be <strong>understood</strong>, <strong>treated</strong> and finally <strong>modelled</strong>. The seven stages below are the order a geologist actually moves through — early stages gate the later ones, so a failed standard or a bad merge is caught before it contaminates a grade estimate.</p>
+      </div>
+
+      <div class="flow">
+        <div class="stage">
+          <div class="num">1</div>
+          <div class="body">
+            <h3>Validate the incoming lab data</h3>
+            <p>Before anything else, confirm the numbers loaded into the project database match what the laboratory actually reported on its certificates. Catch transcription and import errors at the door.</p>
+            <div class="chips"><span class="chip"><a href="#validation">Data Verification</a></span></div>
+          </div>
+        </div>
+        <div class="stage">
+          <div class="num">2</div>
+          <div class="body">
+            <h3>QA/QC the assays</h3>
+            <p>Prove the assay data is reliable using the control samples inserted into the sample stream — reference standards, blanks, duplicates and umpire (check) assays. If the lab is drifting or contaminating, you find out here.</p>
+            <div class="chips"><span class="chip q"><a href="#qaqc">Standards</a></span><span class="chip q"><a href="#qaqc">Blanks</a></span><span class="chip q"><a href="#qaqc">Duplicates</a></span><span class="chip q"><a href="#qaqc">Check Assays</a></span><span class="chip q"><a href="#qaqc">Z-Score</a></span></div>
+          </div>
+        </div>
+        <div class="stage">
+          <div class="num">3</div>
+          <div class="body">
+            <h3>Explore the composited data</h3>
+            <p>Understand the grade population domain by domain — its distribution, its relationships and how it behaves across geological boundaries. This is the exploratory data analysis that shapes every downstream decision.</p>
+            <div class="chips"><span class="chip"><a href="#sample">Sample Statistics</a></span><span class="chip"><a href="#plotting">Box Plot</a></span><span class="chip"><a href="#plotting">Scatter Plot</a></span><span class="chip"><a href="#plotting">Width Plot</a></span><span class="chip"><a href="#sample">Contact Analysis</a></span></div>
+          </div>
+        </div>
+        <div class="stage">
+          <div class="num">4</div>
+          <div class="body">
+            <h3>Assess data density &amp; classification</h3>
+            <p>Measure how tightly the drillholes sample each domain. Nearest-neighbour spacing underpins resource classification — Measured, Indicated, Inferred all hinge on how close the data really is.</p>
+            <div class="chips"><span class="chip"><a href="#sample">DDH Spacing</a></span><span class="chip"><a href="#sample">Thin DDH Spacing</a></span></div>
+          </div>
+        </div>
+        <div class="stage">
+          <div class="num">5</div>
+          <div class="body">
+            <h3>Treat outliers — capping</h3>
+            <p>Decide the top-cut that tames high-grade outliers without throwing away real metal. Choose a capping level per domain, then see exactly what it costs the average grade.</p>
+            <div class="chips"><span class="chip"><a href="#sample">Capping Analysis</a></span><span class="chip"><a href="#sample">Uncapped vs Capped</a></span></div>
+          </div>
+        </div>
+        <div class="stage">
+          <div class="num">6</div>
+          <div class="body">
+            <h3>Geostatistics &amp; change of support</h3>
+            <p>Move from point samples to block estimates. The gammabar function integrates the variogram over a block volume — the change-of-support step that keeps block grades and tonnages honest.</p>
+            <div class="chips"><span class="chip"><a href="#geostats">Gammabar Plot</a></span></div>
+          </div>
+        </div>
+        <div class="stage">
+          <div class="num">7</div>
+          <div class="body">
+            <h3>Block model &amp; reconciliation</h3>
+            <p>Line the model up with reality: convert rotation conventions between packages, and compare estimates against production sampling such as blast holes to reconcile predicted vs actual grade.</p>
+            <div class="chips"><span class="chip"><a href="#blockmodel">Convert Rotations</a></span><span class="chip"><a href="#validation">Drill Hole Comparison</a></span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GETTING STARTED -->
+    <section id="start">
+      <p class="kicker">The basics</p>
+      <h2>Getting started</h2>
+      <div class="prose">
+        <p>The app runs entirely in the browser — nothing to install. Open the hosted link, enter the shared <strong>passphrase</strong>, and pick a section from the left sidebar. Selecting a tool loads it in the main panel; <strong>← Back</strong> returns to the section menu.</p>
+      </div>
+
+      <ul class="feature-list">
+        <li><span class="k">Access</span><span class="d">The app is gated by a single team <b>passphrase</b>. There are no individual accounts — anyone with the link and the passphrase can use every tool.</span></li>
+        <li><span class="k">Two ways in</span><span class="d">Every data tool accepts a file two ways: <b>drag &amp; drop / browse</b> via the sidebar uploader, or <b>“…or select from folder”</b> to pick a file already sitting in the app's working directory.</span></li>
+        <li><span class="k">Save this build</span><span class="d"><b>⬇ Download this version</b> in the sidebar zips up the exact codebase currently running, so you keep a working local copy even if the hosted app is later changed.</span></li>
+        <li><span class="k">Reruns</span><span class="d">Streamlit re-runs the whole script on every input change — expect a brief flash as charts rebuild. That's normal, not a crash.</span></li>
+      </ul>
+
+      <div class="note"><span class="ic">🔒</span><div>The passphrase protects internal tooling, not sensitive infrastructure. Treat any uploaded drillhole or assay file as project-confidential and share the link only within the team.</div></div>
+    </section>
+
+    <!-- FILE INPUTS -->
+    <section id="inputs">
+      <p class="kicker">Data in</p>
+      <h2>File input types</h2>
+      <div class="prose">
+        <p>The toolkit reads three data formats plus two kinds of saved-settings file. Which formats a tool accepts depends on what it does — the sample and geostatistics tools speak native Datamine, while the QA/QC tools lean toward the CSV and Excel exports labs actually send.</p>
+      </div>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>Format</th><th>Extension</th><th>Accepted by</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>CSV</b></td>
+              <td><span class="ext">.csv</span></td>
+              <td>Every tool</td>
+              <td>The universal format. Any Excel sheet or Datamine table can be exported to CSV and read here.</td>
+            </tr>
+            <tr>
+              <td><b>Datamine</b></td>
+              <td><span class="ext">.dm</span></td>
+              <td>Plotting · Sample · Geostats · Block model</td>
+              <td>Native Datamine data files, read directly — no export step. Offered wherever the tool works from drillhole composites.</td>
+            </tr>
+            <tr>
+              <td><b>Excel</b></td>
+              <td><span class="ext">.xlsx</span> <span class="ext">.xls</span></td>
+              <td>All QA/QC tools · Data Verification <span class="mono">(.xlsx / .xlsm)</span></td>
+              <td>Read straight from the workbook — lab certificates usually arrive as Excel, so no Save-As-CSV is needed.</td>
+            </tr>
+            <tr>
+              <td><b>Config</b></td>
+              <td><span class="ext">.json</span></td>
+              <td>QA/QC tools</td>
+              <td>Saves your column mapping and filter choices. <b>Download config JSON</b> to keep it; <b>Load config</b> to restore the exact setup next time.</td>
+            </tr>
+            <tr>
+              <td><b>Settings</b></td>
+              <td><span class="mono">folder file</span></td>
+              <td>Capping · Statistics · Contact · DDH Spacing</td>
+              <td><b>Load Settings</b> recalls a saved parameter preset (fields, domains, capping levels) from the working folder.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style="font-family:var(--display);font-size:1.15rem;margin:34px 0 0">The tools meet messy files halfway</h3>
+      <ul class="feature-list">
+        <li><span class="k">Auto column map</span><span class="d">On upload, each QA/QC tool <b>guesses which column is which</b> — Lab, Element, Value, Date, Unit, CRM, Expected Value, SD — tolerant of case and spacing. <code>Analyte</code> → Element, <code>Assay_Result</code> → Value, <code>certified value</code> → Expected. Override any guess manually.</span></li>
+        <li><span class="k">Wide → long</span><span class="d">If a file has one column block per element (<code>Au_EV</code>, <code>Au_SD</code>, <code>Au_or_ppm</code>, <code>Ag_EV</code>…) instead of tidy Element/Value columns, a sidebar prompt offers to <b>reshape it</b> into the long format the tools expect.</span></li>
+        <li><span class="k">Detection limits</span><span class="d">In Data Verification, censored lab values convert to numbers automatically: <code>&lt;0.5</code> becomes half the limit (0.25), <code>&gt;10000</code> becomes the limit — so they can be compared arithmetically.</span></li>
+        <li><span class="k">Field guessing</span><span class="d">Sample tools recognise common coordinate and key names on sight — <code>X/Y/Z</code>, <code>EAST/NORTH/ELEV</code>, <code>BHID</code>, <code>HOLEID</code>, <code>LENGTH</code>, <code>ZONE/DOMAIN/ROCK</code> — and pre-fill the field pickers.</span></li>
+      </ul>
+    </section>
+
+    <!-- TOOL REFERENCE -->
+    <section id="reference">
+      <p class="kicker">Reference</p>
+      <h2>Tool reference</h2>
+      <div class="prose">
+        <p>Every tool, grouped exactly as it appears in the sidebar. Each card lists what you feed it, the choices that matter, and what comes out. Fields shown in <code>mono</code> are columns you map from your file.</p>
+      </div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--accent)"></span>Grade / geology tools</span>
+        <span><span class="dot" style="background:var(--ore)"></span>QA/QC control charts</span>
+        <span><span class="tag out">Output</span> what the tool produces</span>
+      </div>
+
+      <!-- Plotting -->
+      <div id="plotting" class="cathead"><span class="bar"></span><h3>Plotting Tools</h3><span class="count">3 tools</span></div>
+      <div class="grid cols-3">
+        <div class="card">
+          <h4>Box Plot</h4>
+          <p class="role">Grade distribution as box-and-whisker plots, split by domain and optional subdomain.</p>
+          <dl>
+            <dt>In</dt><dd><span class="mono">.csv / .dm</span></dd>
+            <dt>Map</dt><dd><b>Grade</b>, <b>Domain</b>, optional <b>Subdomain</b></dd>
+            <dt>Options</dt><dd>Log y-axis</dd>
+            <dt>Out</dt><dd><span class="tag out">Interactive chart</span></dd>
+          </dl>
+        </div>
+        <div class="card">
+          <h4>Scatter Plot</h4>
+          <p class="role">Bivariate relationship between any two variables, with optional colour, size and marginal distributions.</p>
+          <dl>
+            <dt>In</dt><dd><span class="mono">.csv / .dm</span></dd>
+            <dt>Map</dt><dd><b>Variable 1</b> &amp; <b>2</b>, colour-by, size-by field or value, hover fields</dd>
+            <dt>Options</dt><dd>Log axes · marginal histogram/box/violin · colour scale</dd>
+            <dt>Out</dt><dd><span class="tag out">Interactive chart</span></dd>
+          </dl>
+        </div>
+        <div class="card">
+          <h4>Width Plot</h4>
+          <p class="role">Variable-width bar chart — bar width and height each driven by a field, e.g. grade weighted by sample length.</p>
+          <dl>
+            <dt>In</dt><dd><span class="mono">.csv / .dm</span></dd>
+            <dt>Map</dt><dd><b>Width</b>, <b>Height</b>, <b>Labels</b></dd>
+            <dt>Options</dt><dd>Sort by height</dd>
+            <dt>Out</dt><dd><span class="tag out">Interactive chart</span></dd>
+          </dl>
+        </div>
+      </div>
+
+      <!-- Sample -->
+      <div id="sample" class="cathead"><span class="bar"></span><h3>Sample Tools</h3><span class="count">6 tools</span></div>
+      <div class="grid cols-3">
+        <div class="card">
+          <h4>Statistics</h4>
+          <p class="role">Descriptive statistics per domain — length-weighted or unweighted.</p>
+          <dl>
+            <dt>In</dt><dd><span class="mono">.csv / .dm</span></dd>
+            <dt>Map</dt><dd><b>Grade Fields</b> (many), <b>Domain</b>, <b>Weight</b></dd>
+            <dt>Options</dt><dd>Invalid-number handling · load/save settings</dd>
+            <dt>Out</dt><dd><span class="tag out">Statistics table</span></dd>
+          </dl>
+        </div>
+        <div class="card">
+          <h4>Capping Analysis</h4>
+          <p class="role">Pick the grade top-cut for a domain and read its impact, across five linked views.</p>
+          <dl>
+            <dt>In</dt><dd><span class="mono">.csv / .dm</span></dd>
+            <dt>Map</dt><dd><b>Grade</b> + unit <span class="mono">(g/t, %, ppm, ppb, oz/t…)</span>, <b>XYZ</b>, <b>Domain</b> filter, <b>Weight</b></dd>
+            <dt>Views</dt><dd>Summary · 3D · orthogonal · decile analysis · log-probability · histogram</dd>
+            <dt>Out</dt><dd><span class="tag out">Capping levels + metal-loss</span></dd>
+          </dl>
+        </div>
+        <div class="card">
+          <h4>Uncapped vs Capped Plot</h4>
+          <p class="role">Side-by-side grade distributions before and after capping, to see the top-cut's effect.</p>
+          <dl>
+            <dt>In</dt><dd><span class="mono">.csv / .dm</span></dd>
+            <dt>Map</dt><dd><b>Uncapped</b>, <b>Capped</b>, <b>Domain</b>, <b>Weight</b></dd>
+            <dt>Options</dt><dd>Sort by capped or uncapped grade</dd>
+            <dt>Out</dt><dd><span class="tag out">Comparison chart</span></dd>
+          </dl>
+        </div>
+        <div class="card">
+          <h4>Contact Analysis</h4>
+          <p class="role">Grade profile across the boundary between two rock types — hard, soft or transitional.</p>
+          <dl>
+            <dt>In</dt><dd><span class="mono">.csv / .dm</span></dd>
+            <dt>Map</dt><dd><b>Grade</b>, <b>XYZ</b>, <b>Domain</b>, <b>Rock 1</b> &amp; <b>Rock 2</b></dd>
+            <dt>Out</dt><dd><span class="tag out">Contact plot</span></dd>
+          </dl>
+        </div>
+        <div class="card">
+          <h4>DDH Spacing</h4>
+          <p class="role">Nearest-neighbour drillhole spacing per domain — the basis for resource classification.</p>
+          <dl>
+            <dt>In</dt><dd><span class="mono">.csv / .dm</span></dd>
+            <dt>Map</dt><dd><b>Hole ID</b>, <b>XYZ</b>, <b>Domain</b></dd>
+            <dt>Out</dt><dd><span class="tag out">Spacing stats + plot</span></dd>
+          </dl>
+        </div>
+        <div class="card">
+          <h4>Thin DDH Spacing</h4>
+          <p class="role">Spacing analysis tuned for thin, narrow-vein style samples where standard spacing misleads.</p>
+          <dl>
+            <dt>In</dt><dd><span class="mono">.csv / .dm</span></dd>
+            <dt>Map</dt><dd><b>Hole ID</b>, <b>XYZ</b></dd>
+            <dt>Out</dt><dd><span class="tag out">Spacing analysis</span></dd>
+          </dl>
+        </div>
+      </div>
+
+      <!-- Block model -->
+      <div id="blockmodel" class="cathead"><span class="bar"></span><h3>Block Model Tools</h3><span class="count">1 tool</span></div>
+      <div class="grid cols-3">
+        <div class="card">
+          <h4>Convert Rotations</h4>
+          <p class="role">Translate block-model rotation angles between software conventions so orientations survive a package change.</p>
+          <dl>
+            <dt>In</dt><dd>Rotation angles + source/target convention</dd>
+            <dt>Out</dt><dd><span class="tag out">Converted angles</span></dd>
+          </dl>
+        </div>
+      </div>
+
+      <!-- Geostats -->
+      <div id="geostats" class="cathead"><span class="bar"></span><h3>Geostats Tools</h3><span class="count">1 tool</span></div>
+      <div class="grid cols-3">
+        <div class="card">
+          <h4>Gammabar Plot</h4>
+          <p class="role">GSLIB gammabar — the average variogram value over a block, for change-of-support work. Rotations follow GSLIB conventions.</p>
+          <dl>
+            <dt>In</dt><dd>Model parameters (no data file)</dd>
+            <dt>Set</dt><dd>Block discretisation <span class="mono">X/Y/Z</span>, rotations, <b>nugget</b>, structures (type, sill C, ranges)</dd>
+            <dt>Out</dt><dd><span class="tag out">Gammabar plot</span></dd>
+          </dl>
+        </div>
+      </div>
+
+      <!-- QA/QC -->
+      <div id="qaqc" class="cathead"><span class="bar" style="background:var(--ore)"></span><h3>QA/QC</h3><span class="count">5 tools</span></div>
+      <div class="prose" style="margin-top:14px">
+        <p>The control-sample tools all share a rhythm: upload a CSV or Excel export, confirm the auto-mapped columns, filter to the labs and elements you care about, click <strong>Run</strong>, then export. Each one produces an on-screen summary table plus downloadable <strong>Excel</strong> and <strong>PowerPoint</strong> reports, and can save its setup as a config JSON.</p>
+      </div>
+      <div class="grid cols-3">
+        <div class="card">
+          <h4>Standards <span class="tag" style="background:var(--ore-tint);color:var(--ore)">CRM</span></h4>
+          <p class="role">Control charts of measured grade against a reference material's certified value ± SD, per element and over time.</p>
+          <dl>
+            <dt>In</dt><dd><span class="mono">.csv / .xlsx</span> + optional config</dd>
+            <dt>Map</dt><dd><b>Date</b>, <b>Grade</b>, <b>CRM</b>, <b>Element</b>, <b>Expected Value</b>, <b>Project</b>, <b>Lab</b>, <b>Unit</b>, SD/limit columns</dd>
+            <dt>Options</dt><dd>Failure criteria at EV ± 1 / 2 / 3 SD</dd>
+            <dt>Out</dt><dd><span class="tag out">Charts · summary · PPTX</span></dd>
+          </dl>
+        </div>
+        <div class="card">
+          <h4>Blanks</h4>
+          <p class="role">Blank-sample contamination check — flags carry-over where a blank reads above its expected floor.</p>
+          <dl>
+            <dt>In</dt><dd><span class="mono">.csv / .xlsx</span> + optional config</dd>
+            <dt>Map</dt><dd><b>Lab</b>, <b>Element</b>, <b>Value</b>, <b>Date</b>, <b>Unit</b>, <b>LOD/DL</b>, <b>Blank-type</b></dd>
+            <dt>Options</dt><dd>Limits: constant per element, or factor × LOD · custom Y-limits</dd>
+            <dt>Out</dt><dd><span class="tag out">Charts · summary · PPTX</span></dd>
+          </dl>
+        </div>
+        <div class="card">
+          <h4>Duplicates</h4>
+          <p class="role">Precision of duplicate pairs — Thompson-Howarth error, pair scatter and HARD (half absolute relative difference).</p>
+          <dl>
+            <dt>In</dt><dd><span class="mono">.csv / .xlsx</span> + optional config</dd>
+            <dt>Map</dt><dd><b>Lab</b>, <b>Duplicate-type</b>, <b>Element</b>, <b>Unit</b>, <b>Original</b> &amp; <b>Duplicate</b> values, <b>Date</b></dd>
+            <dt>Out</dt><dd><span class="tag out">Plots · summary.xlsx · PPTX</span></dd>
+          </dl>
+        </div>
+        <div class="card">
+          <h4>Check Assays</h4>
+          <p class="role">Primary vs secondary (umpire) laboratory comparison, to confirm the primary lab against an independent check.</p>
+          <dl>
+            <dt>In</dt><dd><span class="mono">.csv / .xlsx</span> + optional config</dd>
+            <dt>Map</dt><dd><b>Primary-lab</b>, <b>Secondary-lab</b>, <b>Element</b>, <b>Original</b> &amp; <b>Duplicate</b> assay, <b>Unit</b>, <b>Type</b>, <b>Date</b></dd>
+            <dt>Out</dt><dd><span class="tag out">Plots · summary.xlsx · PPTX</span></dd>
+          </dl>
+        </div>
+        <div class="card">
+          <h4>Z-Score</h4>
+          <p class="role">Standardised z-score of standards over time — turns every reading into distance-from-expected in SD units to spot drift and outliers.</p>
+          <dl>
+            <dt>In</dt><dd><span class="mono">.csv / .xlsx</span> + optional config</dd>
+            <dt>Map</dt><dd><b>Element</b>, <b>CRM</b>, <b>Value</b>, <b>Expected</b>, <b>SD</b>, <b>Date</b>, <b>Company</b></dd>
+            <dt>Out</dt><dd><span class="tag out">Charts · summary · PPTX</span></dd>
+          </dl>
+        </div>
+      </div>
+
+      <!-- Data validation -->
+      <div id="validation" class="cathead"><span class="bar"></span><h3>Data Validation</h3><span class="count">2 tools</span></div>
+      <div class="grid cols-3">
+        <div class="card">
+          <h4>Data Verification Tool</h4>
+          <p class="role">Merge many lab certificate files into one table and reconcile them against the project assay database, flagging every mismatch.</p>
+          <dl>
+            <dt>In</dt><dd><b>Certificates</b> <span class="mono">.csv/.xlsx/.xlsm</span> (multiple) + <b>Assay database</b> file</dd>
+            <dt>Steps</dt><dd>Detect header rows · merge · convert detection limits · match on sample ID per element</dd>
+            <dt>Out</dt><dd><span class="tag out">Merged CSV · per-element verification · difference report</span></dd>
+          </dl>
+        </div>
+        <div class="card">
+          <h4>Drill Hole Comparison</h4>
+          <p class="role">Nearest-neighbour comparison of two datasets — e.g. blast holes vs drill holes — for grade reconciliation within a distance.</p>
+          <dl>
+            <dt>In</dt><dd><b>Dataset 1</b> &amp; <b>Dataset 2</b> <span class="mono">.csv</span></dd>
+            <dt>Map</dt><dd>Grade, length, coordinate and ID/from/to fields; per-dataset capping values</dd>
+            <dt>Options</dt><dd>One-to-one matching · distance threshold</dd>
+            <dt>Out</dt><dd><span class="tag out">Descriptive stats · histograms · CSV</span></dd>
+          </dl>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <div class="shell">
+    <span>SLR · Celest Resource Estimation Tools — User Manual v1.0.2</span>
+    <span>Streamlit app · access by <code>passphrase</code></span>
+  </div>
+</footer>
+
+<script>
+  (function(){
+    var root=document.documentElement, btn=document.getElementById('themeBtn'),
+        ico=document.getElementById('themeIco'), txt=document.getElementById('themeTxt');
+    function sysDark(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;}
+    function current(){var t=root.getAttribute('data-theme');return t?t:(sysDark()?'dark':'light');}
+    function paint(){var d=current()==='dark';ico.textContent=d?'◐':'◑';txt.textContent=d?'Light':'Dark';}
+    try{var s=localStorage.getItem('cm-theme');if(s)root.setAttribute('data-theme',s);}catch(e){}
+    paint();
+    btn.addEventListener('click',function(){
+      var next=current()==='dark'?'light':'dark';
+      root.setAttribute('data-theme',next);
+      try{localStorage.setItem('cm-theme',next);}catch(e){}
+      paint();
+    });
+  })();
+
+  // TOC active-state on scroll
+  (function(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={};links.forEach(function(a){var id=a.getAttribute('href').slice(1);var el=document.getElementById(id);if(el)map[id]=a;});
+    var ids=Object.keys(map);
+    if(!('IntersectionObserver'in window)||!ids.length)return;
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){
+          links.forEach(function(l){l.classList.remove('active');});
+          var a=map[en.target.id];if(a)a.classList.add('active');
+        }
+      });
+    },{rootMargin:'-20% 0px -70% 0px',threshold:0});
+    ids.forEach(function(id){io.observe(document.getElementById(id));});
+  })();
+</script>

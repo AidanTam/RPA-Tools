@@ -10,6 +10,10 @@ A Streamlit web application providing a suite of resource geology tools for samp
 
 Hosted on Streamlit Community Cloud — no install required. Access is protected by a passphrase. The app auto-updates whenever changes are pushed to the `main` branch.
 
+### 📖 User Manual
+
+A full user manual covering the geologist workflow, every file input type, and all 18 tools lives at [docs/USER_MANUAL.md](docs/USER_MANUAL.md). A polished, navigable web version is published [as an artifact](https://claude.ai/code/artifact/0497e027-fb01-4dd3-87d8-dc0f197e84ea).
+
 ---
 
 ## Getting Started
