@@ -342,8 +342,8 @@ def sync_column_mapping(df, key, field_map):
 
 def show_header():
     path = os.path.dirname(__file__)
-    logo = Image.open(os.path.join(path, 'page_header.png'))
-    st.image(logo, caption='', use_container_width=True)
+    logo = Image.open(os.path.join(path, 'slr_logo.png'))
+    st.image(logo, caption='', width=180)
 
 def extend_list(list1, list2):
 

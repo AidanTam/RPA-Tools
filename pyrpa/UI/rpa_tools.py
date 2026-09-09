@@ -22,7 +22,7 @@ if _repo_root not in sys.path:
     sys.path.insert(0, _repo_root)
 
 st.set_page_config(page_title="SLR Tools",
-                   page_icon=Image.open(os.path.join(path, 'logo-slr-2018.png')),
+                   page_icon=Image.open(os.path.join(path, 'slr_logo.png')),
                    layout="wide")
 
 # Suppress set_page_config in child tool modules — it can only be called once
@@ -41,7 +41,7 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
-    st.image(Image.open(os.path.join(path, 'logo-slr-2018.png')), width=220)
+    st.image(Image.open(os.path.join(path, 'slr_logo.png')), width=220)
     st.title("SLR Tools")
     passphrase = st.text_input("Enter passphrase to continue", type="password")
     if passphrase:
@@ -52,8 +52,8 @@ if not st.session_state.authenticated:
             st.error("Incorrect passphrase.")
     st.stop()
 
-logo = Image.open(os.path.join(path, 'logo-slr-2018.png'))
-st.sidebar.image(logo, caption='')
+logo = Image.open(os.path.join(path, 'slr_logo.png'))
+st.sidebar.image(logo, caption='', width=200)
 # Celest kept as a smaller secondary mark so the app reads as SLR-first.
 celest_logo = Image.open(os.path.join(path, 'Celest.png'))
 st.sidebar.image(celest_logo, width=90)
@@ -132,6 +132,7 @@ def run_active_tool():
 # ── Home ─────────────────────────────────────────────────────────────────────
 if section == "Home":
     st.session_state.active_tool = None
+    st.image(Image.open(os.path.join(path, 'slr_logo.png')), width=260)
     st.title("SLR Tools")
     st.caption("Celest · Resource Estimation Tools")
     st.markdown("A collection of miraculous tools for resource geologists.")
