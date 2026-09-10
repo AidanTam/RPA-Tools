@@ -1,21 +1,20 @@
-# Celest Tools — User Manual
+# Celest Tools User Manual
 
 **SLR Celest Resource Estimation Tools · v1.0.2**
 
 A browser-based Streamlit app of 18 tools that take drillhole assays from the
-lab through to a defensible resource estimate — QA/QC, validation, statistics,
+lab through to a defensible resource estimate: QA/QC, validation, statistics,
 capping, geostatistics and reconciliation. No install required.
 
-> A polished, navigable version of this manual is published as an artifact:
-> https://claude.ai/code/artifact/0497e027-fb01-4dd3-87d8-dc0f197e84ea
+> Also available as a Word document: [Celest-Tools-User-Manual.docx](Celest-Tools-User-Manual.docx).
 
 ---
 
-## 1. How the tools fit together — the geologist's workflow
+## 1. How the tools fit together: the geologist's workflow
 
 The toolkit mirrors the life of a resource estimation study. Data has to be
 **trusted** before it can be **understood**, **treated**, and finally
-**modelled**. The stages run in order — early stages gate the later ones, so a
+**modelled**. The stages run in order, early stages gate the later ones, so a
 failed standard or a bad merge is caught before it contaminates a grade estimate.
 
 | # | Stage | Question it answers | Tools |
@@ -32,16 +31,16 @@ failed standard or a bad merge is caught before it contaminates a grade estimate
 
 ## 2. Getting started
 
-- **Access** — the app is gated by a single team **passphrase**. No individual
+- **Access.** The app is gated by a single team **passphrase**. No individual
   accounts; anyone with the link and passphrase can use every tool.
-- **Two ways to load a file** — drag & drop / browse via the sidebar uploader,
+- **Two ways to load a file.** Drag & drop / browse via the sidebar uploader,
   or **"…or select from folder"** to pick a file already in the app's working
   directory.
-- **Save this build** — **⬇ Download this version** zips the exact running
+- **Save this build.** **⬇ Download this version** zips the exact running
   codebase so you keep a working local copy.
-- **Reruns** — Streamlit re-runs the whole script on every input change; a brief
+- **Reruns.** Streamlit re-runs the whole script on every input change; a brief
   flash as charts rebuild is normal.
-- **Navigation** — pick a section in the sidebar, click a tool to open it,
+- **Navigation.** Pick a section in the sidebar, click a tool to open it,
   **← Back** to return to the section menu.
 
 ---
@@ -51,24 +50,24 @@ failed standard or a bad merge is caught before it contaminates a grade estimate
 | Format | Extension | Accepted by | Notes |
 |--------|-----------|-------------|-------|
 | **CSV** | `.csv` | Every tool | Universal format; export from Excel or Datamine. |
-| **Datamine** | `.dm` | Plotting, Sample, Geostats, Block model | Native Datamine data files, read directly — no export step. |
-| **Excel** | `.xlsx`, `.xls` | All QA/QC tools; Data Verification (`.xlsx`/`.xlsm`) | Read straight from the workbook — lab certificates usually arrive as Excel. |
+| **Datamine** | `.dm` | Plotting, Sample, Geostats, Block model | Native Datamine data files, read directly, no export step. |
+| **Excel** | `.xlsx`, `.xls` | All QA/QC tools; Data Verification (`.xlsx`/`.xlsm`) | Read straight from the workbook, lab certificates usually arrive as Excel. |
 | **Config** | `.json` | QA/QC tools | Saves column mapping + filters. *Download config JSON* / *Load config*. |
 | **Settings** | folder file | Capping, Statistics, Contact, DDH Spacing | *Load Settings* recalls a saved parameter preset. |
 
 ### The tools meet messy files halfway
 
-- **Automatic column mapping** — QA/QC tools guess which column is Lab / Element
+- **Automatic column mapping.** QA/QC tools guess which column is Lab / Element
   / Value / Date / Unit / CRM / Expected Value / SD, tolerant of case and
   spacing (`Analyte` → Element, `Assay_Result` → Value, `certified value` →
   Expected). Override any guess manually.
-- **Wide → long reshape** — a file with one column block per element (`Au_EV`,
+- **Wide → long reshape.** A file with one column block per element (`Au_EV`,
   `Au_SD`, `Au_or_ppm`, `Ag_EV`, …) triggers a sidebar prompt to reshape it into
   the long Element/Value format the tools expect.
-- **Detection-limit conversion** (Data Verification) — `<0.5` becomes half the
+- **Detection-limit conversion** (Data Verification), `<0.5` becomes half the
   limit (0.25), `>10000` becomes the limit, so censored values compare
   arithmetically.
-- **Field guessing** — sample tools recognise `X/Y/Z`, `EAST/NORTH/ELEV`,
+- **Field guessing.** Sample tools recognise `X/Y/Z`, `EAST/NORTH/ELEV`,
   `BHID`, `HOLEID`, `LENGTH`, `ZONE/DOMAIN/ROCK` on sight.
 
 ---
@@ -123,7 +122,7 @@ config JSON.
 |------|---------|-----|
 | **Standards (CRM)** | Control charts of measured grade vs a reference material's certified value ± SD, per element over time | Date, Grade, CRM, Element, Expected Value, Project, Lab, Unit, SD/limit cols; failure criteria EV ± 1/2/3 SD |
 | **Blanks** | Blank-sample contamination check vs an LOD-based floor | Lab, Element, Value, Date, Unit, LOD/DL, Blank-type; limits by constant or factor × LOD |
-| **Duplicates** | Precision of duplicate pairs — Thompson-Howarth, scatter, HARD | Lab, Duplicate-type, Element, Unit, Original & Duplicate values, Date |
+| **Duplicates** | Precision of duplicate pairs, Thompson-Howarth, scatter, HARD | Lab, Duplicate-type, Element, Unit, Original & Duplicate values, Date |
 | **Check Assays** | Primary vs secondary (umpire) lab comparison | Primary-lab, Secondary-lab, Element, Original & Duplicate assay, Unit, Type, Date |
 | **Z-Score** | Standardised z-score of standards over time (distance-from-expected in SD units) | Element, CRM, Value, Expected, SD, Date, Company |
 
