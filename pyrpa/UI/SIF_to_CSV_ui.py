@@ -74,12 +74,16 @@ for idx, up in enumerate(uploaded):
 
         diag = sif_convert.diagnostic(parsed)
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Delimiter", diag["delimiter"])
-        c2.metric("Lead columns", diag["lead_columns"])
-        c3.metric("Analytes", diag["analyte_count"])
-        c4.metric("Samples", diag["sample_count"])
+        c1.metric("Format", "fixed width" if diag["format"] == "fixed_width" else diag["delimiter"])
+        c2.metric("Certificate", diag["certificate"] or "—")
+        c3.metric("Analyte columns", diag["analyte_count"])
+        c4.metric("Rows (incl. QC)", diag["sample_count"])
 
-        st.markdown("**Detected analytes** — check these line up before trusting the output:")
+        if parsed.metadata:
+            with st.popover("Certificate details"):
+                st.dataframe(sif_convert.metadata_df(parsed), use_container_width=True, hide_index=True)
+
+        st.markdown("**Detected columns** — check element / method / units line up before trusting the output:")
         st.dataframe(sif_convert.analyte_table_df(parsed), use_container_width=True, hide_index=True)
 
         st.markdown("**Data preview** (first 20 rows):")
