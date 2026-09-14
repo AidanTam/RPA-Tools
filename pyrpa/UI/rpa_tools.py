@@ -136,7 +136,7 @@ if section == "Home":
     st.title("SLR Tools")
     st.caption("Celest · Resource Estimation Tools")
     st.markdown("A collection of miraculous tools for resource geologists.")
-    st.markdown("**Version 1.0.2**")
+    st.markdown("**Version 1.0.3**")
     st.markdown("Select a tool from the sidebar to get started.")
     image = Image.open(os.path.join(path, 'gibraltar_0857.jpg'))
     st.image(image, caption='', use_container_width=True)
