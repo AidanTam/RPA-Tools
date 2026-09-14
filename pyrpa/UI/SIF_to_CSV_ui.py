@@ -30,14 +30,23 @@ sif_convert = importlib.reload(sif_convert)
 # can double-click. It reuses the SAME parser that runs here (read from disk at
 # request time) so the offline result always matches the online one.
 
+INBOX_DIRNAME = "move SIF files here"
+INBOX_PLACEHOLDER = "put your SIF files in this folder.txt"
+
 _CLI_WRAPPER = r'''#!/usr/bin/env python3
-# Local CLI for the SLR Tools "SIF Certificate to CSV" converter.
+# Local runner for the SLR Tools "SIF Certificate to CSV" converter.
 # Bundled by the app's "Run locally" button. Standard library only.
-# Usage:
-#   python sif_to_csv.py FILE.sif [more.sif ...] [--outdir csv_out] [--merge]
-# Or drag .sif files onto "Run SIF to CSV.bat".
-import argparse, glob, os
+#
+# Easiest: move your certificates into the "move SIF files here" folder and
+# double-click "Run SIF to CSV.bat" (or run: python sif_to_csv.py).
+# Naming files explicitly still works:
+#   python sif_to_csv.py FILE.sif [more.sif ...] [--outdir csv_out]
+import argparse, csv, datetime, glob, io, os
 import sif_convert
+
+INBOX = "move SIF files here"
+PLACEHOLDER = "put your sif files in this folder.txt"
+HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def read_text(path):
@@ -64,51 +73,127 @@ def _stack(csvs):
     return "\n".join(out) + "\n"
 
 
+def _merge_wide(parsed):
+    """Combined wide CSV. Row-stack when every file shares one column set;
+    otherwise use the union of columns (blank where a file lacks one) —
+    the same behaviour as the online tool."""
+    headers = [tuple(r.lead_col_names + r.analytes) for _, r in parsed]
+    if len(set(headers)) == 1:
+        return _stack([sif_convert.to_wide_csv(r) for _, r in parsed]), True
+    union = []
+    for h in headers:
+        for c in h:
+            if c not in union:
+                union.append(c)
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(union)
+    for (_, r), h in zip(parsed, headers):
+        idx = {c: k for k, c in enumerate(h)}
+        for row in r.data_rows:
+            w.writerow([row[idx[c]] if c in idx and idx[c] < len(row) else "" for c in union])
+    return buf.getvalue(), False
+
+
+def _report(parsed, failed, same_cols, outdir):
+    """The same stats the online tool shows: per-file format / certificate /
+    analyte columns / rows, plus the combined-output metrics."""
+    total_rows = sum(len(r.data_rows) for _, r in parsed)
+    lines = [
+        "SIF Certificate to CSV - conversion report",
+        "Run: " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "",
+        "Files converted      : %d" % len(parsed),
+        "Files failed         : %d" % len(failed),
+        "Total rows (incl. QC): %d" % total_rows,
+    ]
+    if len(parsed) > 1:
+        lines.append("Columns              : " + ("consistent" if same_cols else "union (differ)"))
+    lines.append("")
+    for name, r in parsed:
+        d = sif_convert.diagnostic(r)
+        fmt = "fixed width" if d["format"] == "fixed_width" else d["delimiter"] + "-delimited"
+        lines += [
+            name,
+            "  Format          : " + fmt,
+            "  Certificate     : " + (d["certificate"] or "-"),
+            "  Analyte columns : %d" % d["analyte_count"],
+            "  Rows (incl. QC) : %d" % d["sample_count"],
+            "",
+        ]
+    if failed:
+        lines.append("Failed files (excluded from the merge):")
+        for name, msg in failed:
+            lines.append("  %s: %s" % (name, msg))
+        lines += ["  Tip: retry with --delimiter comma / tab / semicolon / pipe.", ""]
+    lines.append("Output folder: " + os.path.abspath(outdir))
+    return "\n".join(lines) + "\n"
+
+
 def main():
     ap = argparse.ArgumentParser(description="Convert assay-lab SIF certificates to CSV.")
-    ap.add_argument("files", nargs="+", help="One or more .sif files (wildcards ok).")
+    ap.add_argument("files", nargs="*",
+                    help='Optional files (wildcards ok). Default: everything in "%s".' % INBOX)
     ap.add_argument("--outdir", default="csv_out")
-    ap.add_argument("--merge", action="store_true", help="Also write combined_wide/long.csv.")
     ap.add_argument("--delimiter", default=None, help="Force a delimiter ('tab' for tab).")
     args = ap.parse_args()
     forced = "\t" if args.delimiter == "tab" else args.delimiter
 
-    paths = []
-    for pattern in args.files:
-        hits = glob.glob(pattern)
-        paths.extend(hits if hits else [pattern])
+    if args.files:
+        paths = []
+        for pattern in args.files:
+            hits = glob.glob(pattern)
+            paths.extend(hits if hits else [pattern])
+    else:
+        inbox = os.path.join(HERE, INBOX)
+        os.makedirs(inbox, exist_ok=True)
+        paths = sorted(
+            p for p in glob.glob(os.path.join(inbox, "*"))
+            if os.path.isfile(p) and os.path.basename(p).lower() != PLACEHOLDER
+        )
+        if not paths:
+            print('Nothing to convert. Move your .sif certificates into the')
+            print('"%s" folder and run this again.' % INBOX)
+            return
 
-    os.makedirs(args.outdir, exist_ok=True)
-    parsed = []
+    outdir = args.outdir if os.path.isabs(args.outdir) else os.path.join(HERE, args.outdir)
+    os.makedirs(outdir, exist_ok=True)
+
+    parsed, failed = [], []
     for p in paths:
+        name = os.path.basename(p)
         if not os.path.isfile(p):
             print("[skip] not a file:", p)
             continue
         try:
             result = sif_convert.parse_text(read_text(p), forced)
         except Exception as exc:
-            print("[FAIL]", p, "->", exc)
+            failed.append((name, str(exc)))
+            print("[FAIL]", name, "->", exc)
             continue
-        parsed.append(result)
-        base = os.path.splitext(os.path.basename(p))[0]
-        with open(os.path.join(args.outdir, base + "_wide.csv"), "w", encoding="utf-8", newline="") as fh:
+        parsed.append((name, result))
+        base = os.path.splitext(name)[0]
+        with open(os.path.join(outdir, base + "_wide.csv"), "w", encoding="utf-8", newline="") as fh:
             fh.write(sif_convert.to_wide_csv(result))
-        with open(os.path.join(args.outdir, base + "_long.csv"), "w", encoding="utf-8", newline="") as fh:
+        with open(os.path.join(outdir, base + "_long.csv"), "w", encoding="utf-8", newline="") as fh:
             fh.write(sif_convert.to_long_csv(result))
-        print("[ok]", p, "->", base + "_wide.csv /", base + "_long.csv")
+        print("[ok]", name, "->", base + "_wide.csv /", base + "_long.csv")
 
-    if args.merge and parsed:
-        with open(os.path.join(args.outdir, "combined_long.csv"), "w", encoding="utf-8", newline="") as fh:
-            fh.write(_stack([sif_convert.to_long_csv(r) for r in parsed]))
-        heads = {tuple(r.lead_col_names + r.analytes) for r in parsed}
-        if len(heads) == 1:
-            with open(os.path.join(args.outdir, "combined_wide.csv"), "w", encoding="utf-8", newline="") as fh:
-                fh.write(_stack([sif_convert.to_wide_csv(r) for r in parsed]))
-            print("[ok] merged", len(parsed), "files -> combined_wide.csv / combined_long.csv")
-        else:
-            print("[warn] files have different columns; wrote combined_long.csv only.")
+    same_cols = True
+    if len(parsed) > 1:
+        wide_combined, same_cols = _merge_wide(parsed)
+        with open(os.path.join(outdir, "combined_wide.csv"), "w", encoding="utf-8", newline="") as fh:
+            fh.write(wide_combined)
+        with open(os.path.join(outdir, "combined_long.csv"), "w", encoding="utf-8", newline="") as fh:
+            fh.write(_stack([sif_convert.to_long_csv(r) for _, r in parsed]))
+        print("[ok] merged %d files -> combined_wide.csv / combined_long.csv" % len(parsed))
 
-    print("Done. Output in", os.path.abspath(args.outdir))
+    if parsed or failed:
+        report = _report(parsed, failed, same_cols, outdir)
+        with open(os.path.join(outdir, "report.txt"), "w", encoding="utf-8") as fh:
+            fh.write(report)
+        print()
+        print(report)
 
 
 if __name__ == "__main__":
@@ -116,7 +201,6 @@ if __name__ == "__main__":
 '''
 
 _BAT_LAUNCHER = r'''@echo off
-setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 title SIF Certificate to CSV
 echo(
@@ -131,20 +215,14 @@ where python >nul 2>nul || (
   exit /b 1
 )
 if "%~1"=="" (
-  echo    Tip: you can also drag your .sif files straight onto this .bat icon.
+  echo    Converting everything in the "move SIF files here" folder...
   echo(
-  set /p "SRC=   Paste a .sif file or a folder path (blank to cancel): "
-  if "!SRC!"=="" exit /b 0
-  if exist "!SRC!\" (
-    python sif_to_csv.py "!SRC!\*.sif" --outdir "!SRC!\csv_out" --merge
-  ) else (
-    python sif_to_csv.py "!SRC!" --outdir "%~dp0csv_out"
-  )
+  python sif_to_csv.py
 ) else (
-  python sif_to_csv.py %* --outdir "%~dp0csv_out" --merge
+  python sif_to_csv.py %*
 )
 echo(
-echo    Done. Look in the csv_out folder.
+echo    Done. CSVs and report.txt are in the csv_out folder.
 pause
 '''
 
@@ -155,20 +233,25 @@ Offline copy of the SLR Tools "SIF Certificate to CSV" converter. It runs
 entirely on your machine; nothing is uploaded anywhere.
 
 Requirements: Python 3.9+ (https://www.python.org/downloads/).
-No other install needed (standard library only).
+No other install needed (standard library only). No limit on file count.
 
 Windows (easiest):
   1. Unzip this folder somewhere.
-  2. Double-click "Run SIF to CSV.bat", or drag your .sif files onto it.
-  3. CSVs appear in a "csv_out" folder.
-  (If SmartScreen warns about the .bat, choose "More info" then "Run anyway".)
+  2. Move your .sif certificates into the "move SIF files here" folder.
+  3. Double-click "Run SIF to CSV.bat".
+  4. CSVs land in a "csv_out" folder, along with report.txt - the same
+     stats the online tool shows (per-file format, certificate, analyte
+     columns, rows, and the combined-merge summary).
+  (If SmartScreen warns about the .bat, choose "More info" then "Run anyway".
+   Dragging .sif files onto the .bat still works too.)
 
 Command line (any OS):
+  python sif_to_csv.py                  (converts the "move SIF files here" folder)
   python sif_to_csv.py FILE.sif [more.sif ...] --outdir csv_out
-  python sif_to_csv.py *.sif --outdir csv_out --merge
 
 Per file: <name>_wide.csv and <name>_long.csv
-With --merge: combined_wide.csv and combined_long.csv
+Several files: combined_wide.csv and combined_long.csv (merged automatically)
+Always: report.txt with the conversion summary
 '''
 
 
@@ -182,6 +265,11 @@ def _local_bundle_bytes() -> bytes:
         zf.writestr("sif_to_csv.py", _CLI_WRAPPER)
         zf.writestr("Run SIF to CSV.bat", _BAT_LAUNCHER)
         zf.writestr("README.txt", _LOCAL_README)
+        zf.writestr(
+            f"{INBOX_DIRNAME}/{INBOX_PLACEHOLDER}",
+            'Move your .sif certificates into this folder, then double-click\n'
+            '"Run SIF to CSV.bat" one level up. This note file is ignored.\n',
+        )
     return buf.getvalue()
 
 
@@ -235,16 +323,18 @@ with st.sidebar:
         st.markdown(
             "**How to use**\n"
             "1. Unzip the downloaded file into a folder.\n"
-            "2. Double-click **Run SIF to CSV.bat**, or drag your `.sif` files onto it.\n"
-            "3. If it asks, drag the files in or paste a folder path, then press Enter.\n"
-            "4. Your CSVs land in a new **csv_out** folder (plus a combined file when "
-            "you convert several)."
+            "2. Move your `.sif` certificates into the **move SIF files here** folder "
+            "(any number of files).\n"
+            "3. Double-click **Run SIF to CSV.bat**.\n"
+            "4. Your CSVs land in a new **csv_out** folder — per-file wide/long CSVs, "
+            "combined CSVs when you convert several, and a **report.txt** with the same "
+            "stats this page shows."
         )
         st.markdown(
-            "**Prefer typing?** Put your `.sif` files in that folder, open it, click the "
-            "address bar, type `cmd`, press Enter, then run:"
+            "**Prefer typing?** Open the unzipped folder, click the address bar, "
+            "type `cmd`, press Enter, then run:"
         )
-        st.code("python sif_to_csv.py *.sif --outdir csv_out --merge", language="bash")
+        st.code("python sif_to_csv.py", language="bash")
         st.caption(
             "First run only: if Windows SmartScreen warns, choose *More info* then "
             "*Run anyway*. If Python isn't found, install it from python.org and tick "
