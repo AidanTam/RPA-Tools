@@ -5,9 +5,17 @@ on Streamlit Cloud. Widget keys are namespaced per uploaded file so multiple
 certificates can be converted in one go without duplicate-key errors.
 """
 
+import importlib
+
 import streamlit as st
 
 from pyrpa import sif_convert
+
+# Streamlit Cloud keeps the Python process alive across redeploys and only
+# re-runs the entry script, so an imported module can stay pinned to an older
+# cached copy even after a git deploy. This UI file is re-executed from disk on
+# every run (via runpy), so reloading here guarantees the latest parser.
+sif_convert = importlib.reload(sif_convert)
 
 st.title("SIF Certificate → CSV")
 st.markdown(
