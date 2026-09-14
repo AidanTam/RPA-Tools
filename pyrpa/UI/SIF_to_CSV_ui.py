@@ -219,11 +219,10 @@ with st.sidebar:
 
     with st.expander("🖥️ Run locally (offline)"):
         st.caption(
-            "A web page can't open a terminal on your PC, so this hands you a small "
-            "offline bundle instead. Unzip it, then double-click **Run SIF to CSV.bat** "
-            "(or drag your .sif files onto it). Needs Python 3.9+, no internet or install, "
-            "and nothing leaves your machine. Handy if the hosted app is slow or errors on "
-            "a big batch, or for confidential data."
+            "A web page can't open a terminal on your PC, so this gives you a small "
+            "offline bundle instead. It runs on your machine and nothing is uploaded. "
+            "Good for big batches or confidential data. Needs Python 3.9+ (no internet "
+            "or install)."
         )
         st.download_button(
             "⬇️ Download local runner (.zip)",
@@ -233,8 +232,24 @@ with st.sidebar:
             use_container_width=True,
             key="run_local_zip",
         )
-        st.caption("Command line, in the unzipped folder:")
+        st.markdown(
+            "**How to use**\n"
+            "1. Unzip the downloaded file into a folder.\n"
+            "2. Double-click **Run SIF to CSV.bat**, or drag your `.sif` files onto it.\n"
+            "3. If it asks, drag the files in or paste a folder path, then press Enter.\n"
+            "4. Your CSVs land in a new **csv_out** folder (plus a combined file when "
+            "you convert several)."
+        )
+        st.markdown(
+            "**Prefer typing?** Put your `.sif` files in that folder, open it, click the "
+            "address bar, type `cmd`, press Enter, then run:"
+        )
         st.code("python sif_to_csv.py *.sif --outdir csv_out --merge", language="bash")
+        st.caption(
+            "First run only: if Windows SmartScreen warns, choose *More info* then "
+            "*Run anyway*. If Python isn't found, install it from python.org and tick "
+            '"Add python.exe to PATH".'
+        )
 
 uploaded = st.file_uploader(
     "SIF certificate file(s)",
