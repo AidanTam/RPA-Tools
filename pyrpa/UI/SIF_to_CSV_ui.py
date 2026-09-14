@@ -1,12 +1,17 @@
-"""SIF Certificate to CSV — drop an assay-lab SIF certificate in, get CSV out.
+"""SIF Certificate to CSV — drop assay-lab SIF certificates in, get CSV out.
 
 Wraps pyrpa.sif_convert. Runs fully in memory (no disk writes), so it works
-on Streamlit Cloud. Widget keys are namespaced per uploaded file so multiple
-certificates can be converted in one go without duplicate-key errors.
+on Streamlit Cloud. Supports batch upload: multiple certificates are merged
+into one combined wide CSV and one combined long CSV (row-stacked when the
+columns match, union with a warning when they differ), with an optional
+per-file .zip. Widget keys are namespaced so nothing collides.
 """
 
 import importlib
+import io
+import zipfile
 
+import pandas as pd
 import streamlit as st
 
 from pyrpa import sif_convert
@@ -21,7 +26,7 @@ st.title("SIF Certificate → CSV")
 st.markdown(
     "Convert assay-lab **SIF certificates** (the Standard Interchange Format "
     "files from ALS, SGS, Bureau Veritas, Intertek, etc.) into clean CSV. "
-    "Drop one or more files below."
+    "Drop one or more files below — multiple files are merged into one combined CSV."
 )
 
 DELIM_CHOICES = {
@@ -42,6 +47,12 @@ with st.sidebar:
         key="sif_delim",
     )
     forced_delim = DELIM_CHOICES[delim_label]
+    make_zip = st.checkbox(
+        "Also offer per-file .zip",
+        value=False,
+        help="Build a zip of each file's own wide + long CSVs, in addition to the merged output.",
+        key="sif_zip",
+    )
 
 uploaded = st.file_uploader(
     "SIF certificate file(s)",
@@ -65,21 +76,118 @@ def _decode(raw: bytes) -> str:
     return raw.decode("utf-8", errors="replace")
 
 
-for idx, up in enumerate(uploaded):
-    stem = up.name.rsplit(".", 1)[0]
-    with st.expander(up.name, expanded=(len(uploaded) == 1)):
-        try:
-            text = _decode(up.getvalue())
-            parsed = sif_convert.parse_text(text, forced_delim)
-        except Exception as exc:  # noqa: BLE001 — show a clear message per file
-            st.error(f"Could not parse **{up.name}**: {exc}")
-            st.caption(
-                "Tip: try forcing the delimiter in the sidebar. If it still "
-                "fails, the header layout may be unusual — share a redacted "
-                "sample (structure only, fake values) so the parser can be tuned."
-            )
+def _stack_csv(csv_strings: list) -> str:
+    """Concatenate CSV strings that share an identical header: keep the first
+    header, drop the rest, append all data rows."""
+    out, header = [], None
+    for s in csv_strings:
+        lines = s.splitlines()
+        if not lines:
             continue
+        if header is None:
+            header = lines[0]
+            out.append(header)
+        out.extend(lines[1:])
+    return "\n".join(out) + "\n"
 
+
+# ── Parse every uploaded file ────────────────────────────────────────────────
+results, errors = [], []
+for up in uploaded:
+    try:
+        results.append((up.name, sif_convert.parse_text(_decode(up.getvalue()), forced_delim)))
+    except Exception as exc:  # noqa: BLE001 — report per file, keep going
+        errors.append((up.name, str(exc)))
+
+if errors:
+    st.warning(f"Could not parse {len(errors)} file(s) — they are excluded from the merge:")
+    for name, msg in errors:
+        st.write(f"- **{name}**: {msg}")
+    st.caption(
+        "Tip: try forcing the delimiter in the sidebar. If it still fails, the header "
+        "layout may be unusual — share a redacted sample (structure only, fake values)."
+    )
+
+if not results:
+    st.stop()
+
+multi = len(results) > 1
+
+# ── Combined output (batch) ──────────────────────────────────────────────────
+if multi:
+    st.subheader("Combined output")
+
+    schemas = {tuple(p.lead_col_names + p.analytes) for _, p in results}
+    same_cols = len(schemas) == 1
+
+    long_combined = _stack_csv([sif_convert.to_long_csv(p) for _, p in results])
+    if same_cols:
+        wide_combined = _stack_csv([sif_convert.to_wide_csv(p) for _, p in results])
+    else:
+        frames = [sif_convert.to_wide_df(p) for _, p in results]
+        wide_combined = pd.concat(frames, ignore_index=True).fillna("").to_csv(index=False)
+
+    total_rows = sum(len(p.data_rows) for _, p in results)
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Files merged", len(results))
+    c2.metric("Total rows", total_rows)
+    c3.metric("Columns", "consistent" if same_cols else "union (differ)")
+
+    if same_cols:
+        st.caption("All files share the same columns — merged by stacking rows.")
+    else:
+        st.warning(
+            "Files have different column sets. The combined **wide** CSV uses the union of "
+            "columns (blank where a file lacks one); the combined **long** CSV is unaffected. "
+            "Each row carries its `certificate`, so you can always tell files apart."
+        )
+
+    st.markdown("**Combined preview** (first 20 rows of the wide table):")
+    preview = pd.read_csv(io.StringIO(wide_combined), nrows=20, dtype=str, keep_default_na=False)
+    st.dataframe(preview, use_container_width=True, hide_index=True)
+
+    d1, d2 = st.columns(2)
+    d1.download_button(
+        "⬇️ Combined wide CSV",
+        data=wide_combined,
+        file_name="combined_wide.csv",
+        mime="text/csv",
+        use_container_width=True,
+        key="cmb_wide",
+        help="All samples from all files, one row per sample, one column per analyte.",
+    )
+    d2.download_button(
+        "⬇️ Combined long CSV",
+        data=long_combined,
+        file_name="combined_long.csv",
+        mime="text/csv",
+        use_container_width=True,
+        key="cmb_long",
+        help="All measurements from all files, one row per (sample, analyte).",
+    )
+
+    if make_zip:
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for name, p in results:
+                stem = name.rsplit(".", 1)[0]
+                zf.writestr(f"{stem}_wide.csv", sif_convert.to_wide_csv(p))
+                zf.writestr(f"{stem}_long.csv", sif_convert.to_long_csv(p))
+        st.download_button(
+            "⬇️ Each file separately (.zip)",
+            data=buf.getvalue(),
+            file_name="sif_csv_export.zip",
+            mime="application/zip",
+            use_container_width=True,
+            key="cmb_zip",
+        )
+
+    st.divider()
+    st.caption("Per-file details below (for spot-checking each certificate).")
+
+# ── Per-file detail ──────────────────────────────────────────────────────────
+for idx, (name, parsed) in enumerate(results):
+    with st.expander(name, expanded=(not multi)):
         diag = sif_convert.diagnostic(parsed)
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Format", "fixed width" if diag["format"] == "fixed_width" else diag["delimiter"])
@@ -87,35 +195,40 @@ for idx, up in enumerate(uploaded):
         c3.metric("Analyte columns", diag["analyte_count"])
         c4.metric("Rows (incl. QC)", diag["sample_count"])
 
-        if parsed.metadata:
-            with st.popover("Certificate details"):
-                st.dataframe(sif_convert.metadata_df(parsed), use_container_width=True, hide_index=True)
+        if not multi:
+            # Full detail for a single upload; kept light in batch mode.
+            if parsed.metadata:
+                with st.popover("Certificate details"):
+                    st.dataframe(sif_convert.metadata_df(parsed), use_container_width=True, hide_index=True)
 
-        st.markdown("**Detected columns** — check element / method / units line up before trusting the output:")
-        st.dataframe(sif_convert.analyte_table_df(parsed), use_container_width=True, hide_index=True)
+            st.markdown("**Detected columns** — check element / method / units line up before trusting the output:")
+            st.dataframe(sif_convert.analyte_table_df(parsed), use_container_width=True, hide_index=True)
 
-        st.markdown("**Data preview** (first 20 rows):")
-        wide_df = sif_convert.to_wide_df(parsed)
-        st.dataframe(wide_df.head(20), use_container_width=True, hide_index=True)
+            st.markdown("**Data preview** (first 20 rows):")
+            st.dataframe(sif_convert.to_wide_df(parsed).head(20), use_container_width=True, hide_index=True)
 
-        wide_csv = sif_convert.to_wide_csv(parsed)
-        long_csv = sif_convert.to_long_csv(parsed)
-        d1, d2 = st.columns(2)
-        d1.download_button(
-            "⬇️ Download wide CSV",
-            data=wide_csv,
-            file_name=f"{stem}_wide.csv",
-            mime="text/csv",
-            use_container_width=True,
-            key=f"sif_wide_{idx}",
-            help="One row per sample, one column per analyte.",
-        )
-        d2.download_button(
-            "⬇️ Download long CSV",
-            data=long_csv,
-            file_name=f"{stem}_long.csv",
-            mime="text/csv",
-            use_container_width=True,
-            key=f"sif_long_{idx}",
-            help="Tidy: one row per (sample, analyte) with units, method, detection limit, flag.",
-        )
+            stem = name.rsplit(".", 1)[0]
+            d1, d2 = st.columns(2)
+            d1.download_button(
+                "⬇️ Download wide CSV",
+                data=sif_convert.to_wide_csv(parsed),
+                file_name=f"{stem}_wide.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key=f"sif_wide_{idx}",
+                help="One row per sample, one column per analyte.",
+            )
+            d2.download_button(
+                "⬇️ Download long CSV",
+                data=sif_convert.to_long_csv(parsed),
+                file_name=f"{stem}_long.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key=f"sif_long_{idx}",
+                help="Tidy: one row per (sample, analyte) with units, method, detection limit, flag.",
+            )
+        else:
+            meta = parsed.metadata or {}
+            bits = [f"**{k}:** {meta[k]}" for k in ("CLIENT", "PROJECT", "DATE COMPLETED") if k in meta]
+            if bits:
+                st.caption(" · ".join(bits))
