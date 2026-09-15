@@ -5,6 +5,25 @@ echo(
 echo    SLR Tools  (local runner)
 echo(
 
+rem Opening this file from inside a zip extracts it alone to a temp folder,
+rem leaving none of the app next to it. Catch that before anything else.
+if not exist "requirements.txt" goto :notextracted
+if not exist "pyrpa\UI\rpa_tools.py" goto :notextracted
+goto :extracted
+
+:notextracted
+echo    This file is not sitting with the rest of the app.
+echo(
+echo    If you opened it from inside the .zip, Windows copied just this one
+echo    file to a temporary folder. Close this window, right-click the .zip,
+echo    choose "Extract All", and run this file from the extracted folder.
+echo(
+echo    Current folder: %CD%
+echo(
+pause
+exit /b 1
+
+:extracted
 rem This app needs Python 3.12 or newer: the pinned numpy/pandas versions
 rem refuse to install on anything older. The "python" on PATH is often an
 rem older install, so prefer the py launcher, which can pick a newer one.
