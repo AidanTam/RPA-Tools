@@ -96,6 +96,57 @@ st.sidebar.download_button(
     use_container_width=True,
     help="Download the codebase exactly as it's running right now, so you have a local copy to fall back on.",
 )
+
+with st.sidebar.expander("📖 How to use"):
+    st.markdown(
+        r"""
+**In this hosted app**
+
+Pick a section below, then choose a tool. Upload your CSV or Excel file when
+prompted. Files are held in memory for your session only, and nothing is saved
+to the server.
+
+---
+
+**Run it on your own machine**
+
+A local copy keeps working if this hosted app is down, updated, or you need to
+work offline.
+
+1. Click **⬇️ Download this version** above and unzip it somewhere convenient.
+2. Install [Python 3.13](https://www.python.org/downloads/), ticking
+   *Add Python to PATH* during setup.
+3. Open a terminal in the unzipped folder and set up the dependencies once:
+
+```
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+```
+
+4. Start the app (this is the command to use every time):
+
+```
+.venv\Scripts\python -m streamlit run pyrpa/UI/rpa_tools.py
+```
+
+5. Your browser opens at http://localhost:8501 automatically. If it doesn't,
+   paste that address in yourself.
+6. To stop it, press `Ctrl+C` in the terminal.
+
+On macOS or Linux, replace `.venv\Scripts\` with `.venv/bin/` in both commands.
+
+---
+
+**Notes**
+
+- Step 3 is only needed once per download. After that, step 4 is all you need.
+- The local copy uses the same passphrase screen. Set an `APP_PASSWORD`
+  environment variable before step 4 to change it.
+- The download excludes virtual environments, so it stays small and rebuilds
+  cleanly on any machine.
+        """
+    )
+
 st.sidebar.divider()
 
 SECTIONS = ["Home", "Plotting Tools", "Sample Tools", "Block Model Tools", "Geostats Tools", "QA/QC", "Data Validation"]
