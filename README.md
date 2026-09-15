@@ -6,7 +6,7 @@ A Streamlit web application providing a suite of resource geology tools for samp
 
 ### 🌐 Live App
 
-**[slr-tools.streamlit.app](https://slr-tools.streamlit.app)**
+**[slr-tools-hlkbjthxcsk8brkp3deody.streamlit.app](https://slr-tools-hlkbjthxcsk8brkp3deody.streamlit.app)**
 
 Hosted on Streamlit Community Cloud — no install required. Access is protected by a passphrase. The app auto-updates whenever changes are pushed to the `main` branch.
 
@@ -121,7 +121,7 @@ All tools that accept data files support two input methods:
 
 ## Deployment
 
-This app is deployed at **[slr-tools.streamlit.app](https://slr-tools.streamlit.app)** on [Streamlit Community Cloud](https://share.streamlit.io) (free):
+This app is deployed at **[slr-tools-hlkbjthxcsk8brkp3deody.streamlit.app](https://slr-tools-hlkbjthxcsk8brkp3deody.streamlit.app)** on [Streamlit Community Cloud](https://share.streamlit.io) (free):
 
 1. Push the repo to GitHub (already done — `AidanTam/SLR-Tools`).
 2. Sign in at [share.streamlit.io](https://share.streamlit.io) with your GitHub account and authorize Streamlit's GitHub app.
