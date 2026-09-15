@@ -125,10 +125,16 @@ This app is deployed at **[rpa-tools-lgtdu6uyh9sykzia3u3trw.streamlit.app](https
 
 1. Push the repo to GitHub (already done — `AidanTam/SLR-Tools`).
 2. Sign in at [share.streamlit.io](https://share.streamlit.io) with your GitHub account and authorize Streamlit's GitHub app.
-3. Click **New app**, select this repo and the `main` branch, and set the main file path to `pyrpa/UI/rpa_tools.py`.
-4. Under **Advanced settings**, set the Python version to match local development if needed, and add any secrets (API keys, etc.) under **Secrets** — none are currently required.
+3. Click **Create app**, select this repo and the `main` branch, and set the main file path to `pyrpa/UI/rpa_tools.py`.
+4. Under **Advanced settings**, set the Python version to match local development if needed, and add the access passphrase under **Secrets** in TOML form: `APP_PASSWORD = "your-passphrase"`. This is required: without it the gate in `pyrpa/UI/rpa_tools.py` falls back to the default hardcoded in the source.
 5. Click **Deploy**. The app builds from `requirements.txt` in the repo root and is live at a `*.streamlit.app` URL within a few minutes.
 6. Future pushes to `main` redeploy automatically.
+
+> **Warning:** Do not rename the GitHub repository while the app is deployed. Community Cloud stores
+> `owner/repo` at deploy time and clones by that name, so a rename breaks the app with
+> `Failed to download the sources`. GitHub's redirect does not help, and App settings has no repository
+> field to repoint. The only fix is to delete the app and redeploy, which changes the URL and clears the
+> saved secrets.
 
 > **Note:** Vercel does not support Streamlit — it only runs serverless functions and static sites, not the persistent WebSocket server Streamlit requires. Streamlit Community Cloud, Render, Railway, or a VM are the viable hosts.
 
