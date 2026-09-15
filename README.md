@@ -28,6 +28,11 @@ pip install -r requirements.txt
 
 ### Running the App
 
+On Windows, double-click **`Run SLR Tools.bat`** in the repo root. It creates a `.venv`
+and installs `requirements.txt` on first run, then starts the app on every run after that.
+
+By hand, or on macOS and Linux:
+
 ```bash
 python -m streamlit run pyrpa/UI/rpa_tools.py
 ```

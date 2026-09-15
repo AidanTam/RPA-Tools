@@ -116,32 +116,37 @@ work offline.
 1. Click **⬇️ Download this version** above and unzip it somewhere convenient.
 2. Install [Python 3.13](https://www.python.org/downloads/), ticking
    *Add Python to PATH* during setup.
-3. Open a terminal in the unzipped folder and set up the dependencies once:
+3. Double-click **Run SLR Tools.bat** in the unzipped folder.
+4. Your browser opens at http://localhost:8501. Leave the black console window
+   open while you work, and close it (or press `Ctrl+C`) to stop the app.
+
+The first run sets itself up: it builds a private Python environment and
+installs everything in `requirements.txt`. That takes a few minutes and needs
+an internet connection, once. Every run after that starts in seconds.
+
+If SmartScreen warns about the `.bat`, choose *More info* then *Run anyway*.
+
+---
+
+**macOS, Linux, or running it by hand**
 
 ```
 python -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python -m streamlit run pyrpa/UI/rpa_tools.py
 ```
 
-4. Start the app (this is the command to use every time):
-
-```
-.venv\Scripts\python -m streamlit run pyrpa/UI/rpa_tools.py
-```
-
-5. Your browser opens at http://localhost:8501 automatically. If it doesn't,
-   paste that address in yourself.
-6. To stop it, press `Ctrl+C` in the terminal.
-
-On macOS or Linux, replace `.venv\Scripts\` with `.venv/bin/` in both commands.
+On Windows the equivalent paths are `.venv\Scripts\pip` and
+`.venv\Scripts\python`.
 
 ---
 
 **Notes**
 
-- Step 3 is only needed once per download. After that, step 4 is all you need.
+- Setup only happens once per download. After that, the launcher goes straight
+  to starting the app.
 - The local copy uses the same passphrase screen. Set an `APP_PASSWORD`
-  environment variable before step 4 to change it.
+  environment variable before launching to change it.
 - The download excludes virtual environments, so it stays small and rebuilds
   cleanly on any machine.
         """
