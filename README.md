@@ -6,7 +6,7 @@ A Streamlit web application providing a suite of resource geology tools for samp
 
 ### 🌐 Live App
 
-**[rpa-tools-lgtdu6uyh9sykzia3u3trw.streamlit.app](https://rpa-tools-lgtdu6uyh9sykzia3u3trw.streamlit.app)**
+**[slr-tools.streamlit.app](https://slr-tools.streamlit.app)**
 
 Hosted on Streamlit Community Cloud — no install required. Access is protected by a passphrase. The app auto-updates whenever changes are pushed to the `main` branch.
 
@@ -21,8 +21,8 @@ A full user manual covering the geologist workflow, every file input type, and a
 ### Installation
 
 ```bash
-git clone https://github.com/AidanTam/RPA-Tools.git
-cd RPA-Tools
+git clone https://github.com/AidanTam/SLR-Tools.git
+cd SLR-Tools
 pip install -r requirements.txt
 ```
 
@@ -121,20 +121,21 @@ All tools that accept data files support two input methods:
 
 ## Deployment
 
-This app is deployed at **[rpa-tools-lgtdu6uyh9sykzia3u3trw.streamlit.app](https://rpa-tools-lgtdu6uyh9sykzia3u3trw.streamlit.app)** on [Streamlit Community Cloud](https://share.streamlit.io) (free):
+This app is deployed at **[slr-tools.streamlit.app](https://slr-tools.streamlit.app)** on [Streamlit Community Cloud](https://share.streamlit.io) (free):
 
-1. Push the repo to GitHub (already done — `AidanTam/RPA-Tools`).
+1. Push the repo to GitHub (already done — `AidanTam/SLR-Tools`).
 2. Sign in at [share.streamlit.io](https://share.streamlit.io) with your GitHub account and authorize Streamlit's GitHub app.
 3. Click **Create app**, select this repo and the `main` branch, and set the main file path to `pyrpa/UI/rpa_tools.py`.
 4. Under **Advanced settings**, set the Python version to match local development if needed, and add the access passphrase under **Secrets** in TOML form: `APP_PASSWORD = "your-passphrase"`. This is required: without it the gate in `pyrpa/UI/rpa_tools.py` falls back to the default hardcoded in the source.
 5. Click **Deploy**. The app builds from `requirements.txt` in the repo root and is live at a `*.streamlit.app` URL within a few minutes.
 6. Future pushes to `main` redeploy automatically.
 
-> **Warning:** Do not rename the GitHub repository while the app is deployed. Community Cloud stores
-> `owner/repo` at deploy time and clones by that name, so a rename breaks the app with
-> `Failed to download the sources`. GitHub's redirect does not help, and App settings has no repository
-> field to repoint. The only fix is to delete the app and redeploy, which changes the URL and clears the
-> saved secrets.
+> **Warning:** Community Cloud identifies an app by its GitHub coordinates (owner, repository, branch,
+> entrypoint path). Renaming the repository while the app is deployed breaks it with
+> `Failed to download the sources`, GitHub's redirect does not help, and App settings has no repository
+> field to repoint. The documented order for any such change is: **delete the app, make the change in
+> GitHub, then redeploy.** Deleting the app also clears its saved secrets, so have `APP_PASSWORD` ready
+> to paste back in.
 
 > **Note:** Vercel does not support Streamlit — it only runs serverless functions and static sites, not the persistent WebSocket server Streamlit requires. Streamlit Community Cloud, Render, Railway, or a VM are the viable hosts.
 
@@ -143,7 +144,7 @@ This app is deployed at **[rpa-tools-lgtdu6uyh9sykzia3u3trw.streamlit.app](https
 ## Project Structure
 
 ```
-RPA-Tools/
+SLR-Tools/
 ├── requirements.txt              # Python dependencies (used by Streamlit Cloud)
 ├── pyrpa/
 │   ├── UI/
