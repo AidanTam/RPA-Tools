@@ -115,7 +115,8 @@ work offline.
 
 1. Click **⬇️ Download this version** above and unzip it somewhere convenient.
 2. Install [Python 3.13](https://www.python.org/downloads/), ticking
-   *Add Python to PATH* during setup.
+   *Add Python to PATH* during setup. **Python 3.12 or newer is required**, and
+   the launcher picks a valid one even if an older Python is already on PATH.
 3. Double-click **Run SLR Tools.bat** in the unzipped folder.
 4. Your browser opens at http://localhost:8501. Leave the black console window
    open while you work, and close it (or press `Ctrl+C`) to stop the app.
@@ -131,10 +132,14 @@ If SmartScreen warns about the `.bat`, choose *More info* then *Run anyway*.
 **macOS, Linux, or running it by hand**
 
 ```
-python -m venv .venv
+python3.13 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m streamlit run pyrpa/UI/rpa_tools.py
 ```
+
+Run `pip install -r requirements.txt` against a Python older than 3.12 and it
+fails with *No matching distribution found for numpy*. Build the environment
+with 3.12+ instead.
 
 On Windows the equivalent paths are `.venv\Scripts\pip` and
 `.venv\Scripts\python`.

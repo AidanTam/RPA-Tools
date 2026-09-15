@@ -20,10 +20,15 @@ A full user manual covering the geologist workflow, every file input type, and a
 
 ### Installation
 
+Requires **Python 3.12 or newer**. The pinned numpy and pandas versions publish no
+wheels for 3.11 or below, so `pip install` fails outright on an older interpreter.
+Check with `py --list` on Windows.
+
 ```bash
 git clone https://github.com/AidanTam/SLR-Tools.git
 cd SLR-Tools
-pip install -r requirements.txt
+py -3.13 -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
 ```
 
 ### Running the App

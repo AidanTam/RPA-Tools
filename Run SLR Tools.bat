@@ -5,8 +5,32 @@ echo(
 echo    SLR Tools  (local runner)
 echo(
 
-where python >nul 2>nul || (
-  echo    Python was not found on PATH.
+rem This app needs Python 3.12 or newer: the pinned numpy/pandas versions
+rem refuse to install on anything older. The "python" on PATH is often an
+rem older install, so prefer the py launcher, which can pick a newer one.
+set "PYCMD="
+py -3.13 -c "pass" >nul 2>nul
+if not errorlevel 1 set "PYCMD=py -3.13"
+if not defined PYCMD (
+  py -3.14 -c "pass" >nul 2>nul
+  if not errorlevel 1 set "PYCMD=py -3.14"
+)
+if not defined PYCMD (
+  py -3.12 -c "pass" >nul 2>nul
+  if not errorlevel 1 set "PYCMD=py -3.12"
+)
+if not defined PYCMD (
+  python -c "import sys; sys.exit(0 if sys.version_info >= (3,12) else 1)" >nul 2>nul
+  if not errorlevel 1 set "PYCMD=python"
+)
+
+if not defined PYCMD (
+  echo    This app needs Python 3.12 or newer, and none was found.
+  echo(
+  echo    Detected on this machine:
+  py --list 2>nul
+  python -c "import sys; print('     python on PATH: ' + sys.version.split()[0])" 2>nul
+  echo(
   echo    Install Python 3.13 from https://www.python.org/downloads/ and tick
   echo    "Add python.exe to PATH", then run this again.
   echo(
@@ -14,11 +38,28 @@ where python >nul 2>nul || (
   exit /b 1
 )
 
+rem A .venv left over from an older Python cannot run this app either.
+if exist ".venv\Scripts\python.exe" (
+  ".venv\Scripts\python.exe" -c "import sys; sys.exit(0 if sys.version_info >= (3,12) else 1)" >nul 2>nul
+  if errorlevel 1 (
+    echo    The existing .venv folder was built with a Python older than 3.12,
+    echo    so the dependencies cannot install into it.
+    echo(
+    echo    Delete the .venv folder next to this file, then run this again.
+    echo(
+    pause
+    exit /b 1
+  )
+)
+
+echo    Using %PYCMD%
+echo(
+
 if not exist ".venv\Scripts\python.exe" (
   echo    First run: setting up a private Python environment in .venv
   echo    This happens once and takes a few minutes. Later runs start straight up.
   echo(
-  python -m venv .venv
+  %PYCMD% -m venv .venv
   if errorlevel 1 (
     echo    Could not create the environment. Check that Python installed correctly.
     echo(
@@ -31,8 +72,8 @@ if not exist ".venv\Scripts\python.exe" (
   ".venv\Scripts\python.exe" -m pip install -r requirements.txt
   if errorlevel 1 (
     echo(
-    echo    Dependency install failed. You need an internet connection for this
-    echo    first run. Delete the .venv folder and try again.
+    echo    Dependency install failed. The first run needs an internet connection.
+    echo    Delete the .venv folder and try again.
     echo(
     pause
     exit /b 1
