@@ -7,6 +7,7 @@ columns match, union with a warning when they differ), with an optional
 per-file .zip. Widget keys are namespaced so nothing collides.
 """
 
+import csv
 import importlib
 import io
 import os
@@ -353,6 +354,41 @@ if not uploaded:
     st.info("Upload one or more .sif certificate files to begin.")
     st.stop()
 
+# ── Batch size guard ─────────────────────────────────────────────────────────
+# Every session on Streamlit Cloud shares one container with a fixed memory
+# budget, so an oversized batch doesn't just fail for the person uploading — it
+# takes the whole app down for everyone until it is rebooted. Converting costs
+# roughly 15x the uploaded bytes at peak (the long-format CSV dominates, at
+# rows x analytes), so refuse batches that would put the container at risk and
+# hand the user the offline runner, which has no limit.
+MAX_FILES = 60
+MAX_TOTAL_BYTES = 40 * 1024 * 1024
+
+total_bytes = sum(up.size for up in uploaded)
+if len(uploaded) > MAX_FILES or total_bytes > MAX_TOTAL_BYTES:
+    st.error(
+        f"This batch is too large to convert online: **{len(uploaded)} files, "
+        f"{total_bytes / 1024 / 1024:.0f} MB** (limit: {MAX_FILES} files and "
+        f"{MAX_TOTAL_BYTES // 1024 // 1024} MB per batch).\n\n"
+        "The hosted app shares one server with everyone else using these tools, "
+        "so a batch this big would run it out of memory. Use the offline runner "
+        "below instead — it has no limit, runs on your own machine, and produces "
+        "identical output."
+    )
+    st.download_button(
+        "⬇️ Download local runner (.zip)",
+        data=_local_bundle_bytes(),
+        file_name="SIF-to-CSV-local.zip",
+        mime="application/zip",
+        key="run_local_zip_toobig",
+        help="Unzip, move your .sif files into the folder it makes, double-click the .bat.",
+    )
+    st.caption(
+        "Converting a smaller batch here still works — try splitting it up if you "
+        "would rather stay in the browser."
+    )
+    st.stop()
+
 
 def _decode(raw: bytes) -> str:
     for enc in ("utf-8-sig", "utf-8", "latin-1"):
@@ -363,9 +399,13 @@ def _decode(raw: bytes) -> str:
     return raw.decode("utf-8", errors="replace")
 
 
-def _stack_csv(csv_strings: list) -> str:
+def _stack_csv(csv_strings) -> str:
     """Concatenate CSV strings that share an identical header: keep the first
-    header, drop the rest, append all data rows."""
+    header, drop the rest, append all data rows.
+
+    Takes any iterable so callers can pass a generator: each file's CSV is then
+    freed as soon as its rows are copied, instead of every file's CSV being held
+    at once alongside the combined result."""
     out, header = [], None
     for s in csv_strings:
         lines = s.splitlines()
@@ -408,12 +448,28 @@ if multi:
     schemas = {tuple(p.lead_col_names + p.analytes) for _, p in results}
     same_cols = len(schemas) == 1
 
-    long_combined = _stack_csv([sif_convert.to_long_csv(p) for _, p in results])
+    long_combined = _stack_csv(sif_convert.to_long_csv(p) for _, p in results)
     if same_cols:
-        wide_combined = _stack_csv([sif_convert.to_wide_csv(p) for _, p in results])
+        wide_combined = _stack_csv(sif_convert.to_wide_csv(p) for _, p in results)
     else:
-        frames = [sif_convert.to_wide_df(p) for _, p in results]
-        wide_combined = pd.concat(frames, ignore_index=True).fillna("").to_csv(index=False)
+        # Union of columns, written row by row. Building a DataFrame per file and
+        # concatenating them costs several full copies of the batch at peak; this
+        # holds only the output, and matches what the offline runner does.
+        union = []
+        for _, p in results:  # file order, so the column order is reproducible
+            for col in list(p.lead_col_names) + list(p.analytes):
+                if col not in union:
+                    union.append(col)
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(union)
+        for _, p in results:
+            pos = {col: i for i, col in enumerate(list(p.lead_col_names) + list(p.analytes))}
+            for row in p.data_rows:
+                writer.writerow(
+                    [row[pos[c]] if c in pos and pos[c] < len(row) else "" for c in union]
+                )
+        wide_combined = buf.getvalue()
 
     total_rows = sum(len(p.data_rows) for _, p in results)
     c1, c2, c3 = st.columns(3)
