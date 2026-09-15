@@ -21,8 +21,8 @@ A full user manual covering the geologist workflow, every file input type, and a
 ### Installation
 
 ```bash
-git clone https://github.com/AidanTam/RPA-Tools.git
-cd RPA-Tools
+git clone https://github.com/AidanTam/SLR-Tools.git
+cd SLR-Tools
 pip install -r requirements.txt
 ```
 
@@ -123,7 +123,7 @@ All tools that accept data files support two input methods:
 
 This app is deployed at **[rpa-tools-lgtdu6uyh9sykzia3u3trw.streamlit.app](https://rpa-tools-lgtdu6uyh9sykzia3u3trw.streamlit.app)** on [Streamlit Community Cloud](https://share.streamlit.io) (free):
 
-1. Push the repo to GitHub (already done — `AidanTam/RPA-Tools`).
+1. Push the repo to GitHub (already done — `AidanTam/SLR-Tools`).
 2. Sign in at [share.streamlit.io](https://share.streamlit.io) with your GitHub account and authorize Streamlit's GitHub app.
 3. Click **New app**, select this repo and the `main` branch, and set the main file path to `pyrpa/UI/rpa_tools.py`.
 4. Under **Advanced settings**, set the Python version to match local development if needed, and add any secrets (API keys, etc.) under **Secrets** — none are currently required.
@@ -137,7 +137,7 @@ This app is deployed at **[rpa-tools-lgtdu6uyh9sykzia3u3trw.streamlit.app](https
 ## Project Structure
 
 ```
-RPA-Tools/
+SLR-Tools/
 ├── requirements.txt              # Python dependencies (used by Streamlit Cloud)
 ├── pyrpa/
 │   ├── UI/

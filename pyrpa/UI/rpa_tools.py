@@ -91,7 +91,7 @@ def _build_repo_zip():
 st.sidebar.download_button(
     "⬇️ Download this version",
     data=_build_repo_zip(),
-    file_name="RPA-Tools.zip",
+    file_name="SLR-Tools.zip",
     mime="application/zip",
     use_container_width=True,
     help="Download the codebase exactly as it's running right now, so you have a local copy to fall back on.",
