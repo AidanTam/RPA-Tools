@@ -569,7 +569,7 @@ if df is not None:
         # with st.expander("Reporting"):
         #   st.info('## Reporting') 
         #   introduction = st.text_area('Introduction Key points', ' Write a brief introduction here or bullet points and the AI assitant will generate rich text for you')  
-        #   openai.api_key = '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'
+        #   openai.api_key = os.environ["OPENAI_API_KEY"]  # never hardcode a key here
         #   if st.button('Generate Rich Content'):
         #     completion = openai.ChatCompletion.create(
         #                                           model="gpt-3.5-turbo",
